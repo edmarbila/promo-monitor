@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+config.js
+*.session
+*.session-journal
+*.db
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
