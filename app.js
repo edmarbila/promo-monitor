@@ -564,9 +564,11 @@
   }
 
   async function saveNtfySettings(showMessage=true){
+    const mode=selectedNtfyMode();
+    const customName=$("ntfyCustomName").value;
     let topic=$("ntfyTopic").value.trim();
 
-    if(selectedNtfyMode()==="custom"){
+    if(mode==="custom"){
       if(!updateCustomTopicPreview()){
         throw new Error("Corrija o nome personalizado do tópico antes de salvar.");
       }
@@ -589,6 +591,18 @@
     if(error) throw error;
     state.alerts=data;
     renderAlerts();
+
+    if(mode==="custom"){
+      $("ntfyModeAuto").checked=false;
+      $("ntfyModeCustom").checked=true;
+      $("ntfyCustomBox").hidden=false;
+      $("ntfyCustomName").value=customName;
+      $("ntfyCustomError").hidden=true;
+      $("ntfyTopicPreview").textContent=data.ntfy_topic;
+      $("ntfyTopic").value=data.ntfy_topic;
+      updateNtfyLink(data.ntfy_topic);
+    }
+
     if(showMessage) notify("Configuração ntfy salva.","success");
     return data;
   }
