@@ -452,10 +452,87 @@
     }
   }
 
-  function randomNtfyTopic(){
-    const bytes=new Uint8Array(20);
+  let ntfySecuritySuffix="";
+
+  function randomChars(length=10){
+    const alphabet="abcdefghijklmnopqrstuvwxyz0123456789";
+    const bytes=new Uint8Array(length);
     crypto.getRandomValues(bytes);
-    return "promo-"+Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+    return Array.from(bytes,b=>alphabet[b%alphabet.length]).join("");
+  }
+
+  function randomNtfyTopic(){
+    return "promo-"+randomChars(28);
+  }
+
+  function normalizeTopicBase(value){
+    return String(value||"")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g,"-")
+      .replace(/^-+|-+$/g,"")
+      .replace(/-{2,}/g,"-")
+      .slice(0,48);
+  }
+
+  function validateCustomTopicBase(value){
+    const normalized=normalizeTopicBase(value);
+    if(!normalized) return {ok:false,normalized,error:"Digite um nome para o tópico."};
+    if(!/[a-z]/.test(normalized) || !/\d/.test(normalized)){
+      return {
+        ok:false,
+        normalized,
+        error:"O nome personalizado precisa ter pelo menos uma letra e um número. Ex.: promocao 001."
+      };
+    }
+    return {ok:true,normalized,error:""};
+  }
+
+  function ensureNtfySuffix(){
+    if(!ntfySecuritySuffix) ntfySecuritySuffix=randomChars(10);
+    return ntfySecuritySuffix;
+  }
+
+  function selectedNtfyMode(){
+    return $("ntfyModeCustom").checked?"custom":"auto";
+  }
+
+  function updateCustomTopicPreview(){
+    const custom=selectedNtfyMode()==="custom";
+    $("ntfyCustomBox").hidden=!custom;
+
+    if(!custom){
+      $("ntfyCustomError").hidden=true;
+      $("ntfyTopicPreview").textContent=$("ntfyTopic").value||"—";
+      return true;
+    }
+
+    const check=validateCustomTopicBase($("ntfyCustomName").value);
+    if(!check.ok){
+      $("ntfyCustomError").textContent=check.error;
+      $("ntfyCustomError").hidden=false;
+      $("ntfyTopicPreview").textContent=check.normalized
+        ? `${check.normalized}-[segurança]`
+        : "—";
+      return false;
+    }
+
+    const finalTopic=`${check.normalized}-${ensureNtfySuffix()}`;
+    $("ntfyCustomError").hidden=true;
+    $("ntfyTopicPreview").textContent=finalTopic;
+    $("ntfyTopic").value=finalTopic;
+    updateNtfyLink(finalTopic);
+    return true;
+  }
+
+  function updateNtfyLink(topic){
+    if(topic){
+      $("ntfyOpenLink").href=`https://ntfy.sh/${encodeURIComponent(topic)}`;
+      $("ntfyOpenLink").hidden=false;
+    }else{
+      $("ntfyOpenLink").hidden=true;
+    }
   }
 
   function renderAlerts(){
@@ -468,24 +545,37 @@
     $("ntfyPriority").value=String(a.ntfy_priority||5);
     $("ntfyPill").textContent=enabled?"ntfy ativo":"Desativado";
     $("ntfyPill").className="pill"+(enabled?" ntfy-active":"");
+    $("ntfyModeAuto").checked=true;
+    $("ntfyModeCustom").checked=false;
+    $("ntfyCustomBox").hidden=true;
+    $("ntfyCustomName").value="";
+    $("ntfyCustomError").hidden=true;
+    $("ntfyTopicPreview").textContent=topic||"—";
+    ntfySecuritySuffix="";
 
+    updateNtfyLink(topic);
     if(topic){
-      $("ntfyOpenLink").href=`https://ntfy.sh/${encodeURIComponent(topic)}`;
-      $("ntfyOpenLink").hidden=false;
       $("ntfyStatus").textContent=enabled
-        ?"Os próximos matches serão enviados para este tópico."
+        ?"Os próximos matches serão enviados para este tópico. No ntfy, a inscrição precisa ter exatamente este nome."
         :"O tópico está salvo, mas os alertas estão desativados.";
     }else{
-      $("ntfyOpenLink").hidden=true;
-      $("ntfyStatus").textContent="Gere um tópico para começar.";
+      $("ntfyStatus").textContent="Gere um tópico automático ou escolha um nome personalizado.";
     }
   }
 
   async function saveNtfySettings(showMessage=true){
     let topic=$("ntfyTopic").value.trim();
-    if(!topic){
+
+    if(selectedNtfyMode()==="custom"){
+      if(!updateCustomTopicPreview()){
+        throw new Error("Corrija o nome personalizado do tópico antes de salvar.");
+      }
+      topic=$("ntfyTopic").value.trim();
+    }else if(!topic){
       topic=randomNtfyTopic();
       $("ntfyTopic").value=topic;
+      $("ntfyTopicPreview").textContent=topic;
+      updateNtfyLink(topic);
     }
     const payload={
       user_id:state.user.id,
@@ -503,12 +593,38 @@
     return data;
   }
 
+  $("ntfyModeAuto").onchange=()=>{
+    if(!$("ntfyModeAuto").checked) return;
+    $("ntfyCustomBox").hidden=true;
+    $("ntfyCustomError").hidden=true;
+    const current=String(state.alerts?.ntfy_topic||"").trim();
+    if(current){
+      $("ntfyTopic").value=current;
+      $("ntfyTopicPreview").textContent=current;
+      updateNtfyLink(current);
+    }
+  };
+
+  $("ntfyModeCustom").onchange=()=>{
+    if(!$("ntfyModeCustom").checked) return;
+    ntfySecuritySuffix=randomChars(10);
+    $("ntfyCustomBox").hidden=false;
+    updateCustomTopicPreview();
+    $("ntfyCustomName").focus();
+  };
+
+  $("ntfyCustomName").addEventListener("input",updateCustomTopicPreview);
+
   $("ntfyGenerateBtn").onclick=()=>{
+    $("ntfyModeAuto").checked=true;
+    $("ntfyModeCustom").checked=false;
+    $("ntfyCustomBox").hidden=true;
+    ntfySecuritySuffix="";
     const topic=randomNtfyTopic();
     $("ntfyTopic").value=topic;
-    $("ntfyOpenLink").href=`https://ntfy.sh/${encodeURIComponent(topic)}`;
-    $("ntfyOpenLink").hidden=false;
-    $("ntfyStatus").textContent="Novo tópico gerado. Clique em Salvar antes de testar.";
+    $("ntfyTopicPreview").textContent=topic;
+    updateNtfyLink(topic);
+    $("ntfyStatus").textContent="Novo tópico automático gerado. Clique em Salvar tópico antes de testar.";
   };
 
   $("ntfyCopyBtn").onclick=async()=>{
@@ -612,7 +728,7 @@
     document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
     $(`view-${name}`)?.classList.add("active");
     document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));
-    const titles={dashboard:"Dashboard",keywords:"Palavras-chave",groups:"Grupos",coupons:"Cupons",stores:"Lojas de interesse",history:"Histórico 24h",telegram:"Configuração do Telegram",account:"Minha conta",project:"Projeto"};
+    const titles={dashboard:"Dashboard",keywords:"Palavras-chave",groups:"Grupos",coupons:"Cupons",stores:"Lojas de interesse",history:"Histórico 24h",telegram:"Configurar Conexão",account:"Minha conta",project:"Projeto"};
     $("pageTitle").textContent=titles[name]||"Promo Monitor";
     refresh(name).catch(fail);
   }
