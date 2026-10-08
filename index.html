@@ -177,6 +177,49 @@
         <form id="telegramCodeForm" class="inline" hidden><input id="tgCode" placeholder="Código recebido" required><button class="btn primary">Confirmar</button></form>
         <form id="telegram2faForm" class="inline" hidden><input id="tg2fa" type="password" placeholder="Senha 2FA" required><button class="btn primary">Confirmar 2FA</button></form>
         <button id="disconnectTelegramBtn" class="btn danger" hidden>Desconectar Telegram</button>
+
+        <div class="ntfy-box">
+          <div class="panel-head">
+            <div>
+              <h3>Alertas no ntfy</h3>
+              <p>Receba os matches em um aplicativo separado, sem poluir suas Mensagens Salvas do Telegram.</p>
+            </div>
+            <span id="ntfyPill" class="pill">Verificando...</span>
+          </div>
+
+          <div class="guide">
+            <h4>Como receber no celular</h4>
+            <ol>
+              <li>Instale o aplicativo <strong>ntfy</strong> no celular.</li>
+              <li>No ntfy, toque em <strong>Inscrever-se em tópico</strong>.</li>
+              <li>Copie o tópico abaixo e cole exatamente igual no aplicativo.</li>
+              <li>Salve a configuração e clique em <strong>Enviar teste</strong>.</li>
+            </ol>
+            <p>O tópico é gerado com um nome longo e aleatório. Trate esse nome como uma senha e não publique em grupos ou prints.</p>
+          </div>
+
+          <form id="ntfySettingsForm" class="ntfy-form">
+            <label class="check-row"><input id="ntfyEnabled" type="checkbox" checked> Ativar alertas pelo ntfy</label>
+            <label>Tópico ntfy
+              <input id="ntfyTopic" type="text" readonly>
+            </label>
+            <label>Prioridade
+              <select id="ntfyPriority">
+                <option value="5">Máxima</option>
+                <option value="4">Alta</option>
+                <option value="3">Normal</option>
+              </select>
+            </label>
+            <div class="actions ntfy-actions">
+              <button id="ntfyGenerateBtn" type="button" class="btn secondary">Gerar novo tópico</button>
+              <button id="ntfyCopyBtn" type="button" class="btn secondary">Copiar tópico</button>
+              <button type="submit" class="btn primary">Salvar</button>
+              <button id="ntfyTestBtn" type="button" class="btn active-btn">Enviar teste</button>
+            </div>
+          </form>
+          <a id="ntfyOpenLink" class="link ntfy-link" target="_blank" rel="noopener">Abrir tópico no navegador</a>
+          <p id="ntfyStatus" class="muted small-copy"></p>
+        </div>
       </section>
     </section>
 
