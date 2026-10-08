@@ -1,0 +1,16 @@
+[Unit]
+Description=Promo Monitor multi-user worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=promomonitor
+WorkingDirectory=/opt/promo-monitor/server
+EnvironmentFile=/opt/promo-monitor/server/.env
+ExecStart=/opt/promo-monitor/.venv/bin/python /opt/promo-monitor/server/multi_user_worker.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
