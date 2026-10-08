@@ -422,6 +422,17 @@
       const sub=document.createElement("span");sub.textContent=`${x.store_slug} • ${(x.sources||[]).join(" + ")} • ${x.active?"ativa":"pausada"}`;main.append(s,sub);
       const actions=document.createElement("div");actions.className="actions";
       actions.append(
+        btn("Buscar agora","btn mini secondary",async()=>{
+          try{
+            notify(`Buscando cupons de ${x.store_name}...`);
+            const scan=await api("/coupons/scan",{method:"POST",body:JSON.stringify({store_id:x.id})});
+            await loadCoupons(); renderCounts();
+            notify(scan.total>0
+              ? `${scan.total} código(s) encontrado(s) para ${x.store_name}.`
+              : `Nenhum código digitável ativo encontrado agora para ${x.store_name}.`,
+              scan.total>0?"success":"");
+          }catch(e){fail(e);}
+        }),
         btn(x.active?"Pausar":"Ativar",`btn mini ${x.active?"active-btn":"inactive-btn"}`,async()=>{
           try{const {error}=await db.from("tg_coupon_sites").update({active:!x.active}).eq("id",x.id);if(error)throw error;await loadStores();}catch(e){fail(e);}
         }),
