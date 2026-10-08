@@ -15,7 +15,7 @@ from telethon.sessions import StringSession
 from crypto_utils import decrypt_text
 from coupon_sources import fetch_store_coupons, coupon_key
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 CONFIG_REFRESH_SECONDS = 10
 ACCOUNT_SYNC_SECONDS = 20
 GROUP_REQUEST_SECONDS = 5
@@ -400,7 +400,7 @@ async def coupon_scan_once():
     )
 
     for site in response.data or []:
-        sources = site.get("sources") or ["meliuz","cuponeria"]
+        sources = site.get("sources") or ["meliuz","cuponeria","picodi","promobit"]
         for source in sources:
             try:
                 results = await fetch_store_coupons(
