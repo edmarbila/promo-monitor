@@ -1,117 +1,130 @@
-# Promo Monitor
+# Promo Monitor V2.1
 
-Painel multiusuário para monitorar palavras-chave em grupos do Telegram e organizar promoções e cupons.
+Monitor multiusuário de palavras-chave do Telegram com painel web, worker 24/7 e central de códigos de cupom.
 
-## Principais recursos
+O projeto usa **Supabase Auth + PostgreSQL/RLS**, **Telethon**, **FastAPI**, um worker Python contínuo e um frontend estático que pode ser publicado no **GitHub Pages**.
 
-- Cadastro e login pelo Supabase Auth.
-- Dados isolados por usuário usando RLS.
-- Cada usuário conecta sua própria conta do Telegram.
-- Palavras-chave e grupos configuráveis pelo celular.
-- Worker independente do navegador/Windows.
-- Histórico com retenção automática de 24 horas.
-- Central de cupons:
-  - cupons detectados nas mensagens do Telegram;
-  - busca em lojas cadastradas no Méliuz;
-  - busca em lojas cadastradas na Cuponeria.
-- Painel web responsivo.
-- Painel Windows sincronizado com o mesmo Supabase.
-- Projeto preparado para publicação sem dados pessoais.
+## O que já está pronto
+
+- Cadastro, login, recuperação e troca de senha pelo Supabase Auth.
+- Popup de primeiro acesso orientando o usuário a configurar o Telegram.
+- Cada usuário conecta a própria conta Telegram pelo painel.
+- API ID, API Hash, telefone e StringSession ficam no backend; dados sensíveis são criptografados.
+- Palavras-chave não diferenciam maiúsculas/minúsculas: `BUG`, `Bug` e `bug` são a mesma busca.
+- Grupos e palavras isolados por usuário com RLS.
+- Worker continua monitorando mesmo com PC e navegador desligados.
+- Histórico de ocorrências com retenção de 24 horas.
+- Central de cupons com código, desconto, descrição/regra e origem quando disponíveis.
+- Motores de cupons: Telegram, Méliuz, Cuponeria, Picodi e Promobit.
+- Cadastro de lojas como Shopee, Amazon e KaBuM pelo nome.
+- Busca imediata ao cadastrar uma loja e botão **Buscar agora**.
+- Cupons removidos fisicamente após 48 horas sem atualização.
+- Painel responsivo para computador e celular.
+- Serviços systemd para API e worker.
+- Exemplo de reverse proxy HTTPS com Caddy.
+- Cliente Windows legado/opcional.
 
 ## Arquitetura
 
 ```text
-Painel Web / Windows
+GitHub Pages / navegador
         |
-        v
-Supabase Auth + RLS
+        +----> Supabase Auth + RLS
+        |          |
+        |          +--> palavras / grupos / histórico / cupons
         |
-        +---------------------------+
-        |                           |
-        v                           v
-Control API                  Banco Supabase
-(configura Telegram)        palavras/grupos/cupons
-        |                           ^
-        v                           |
-Credenciais criptografadas         |
-        |                           |
-        +------> Worker multiusuário+
-                  |
-                  +--> Telegram
-                  +--> Méliuz
-                  +--> Cuponeria
+        +----> Control API HTTPS (FastAPI)
+                   |
+                   +--> configuração Telegram criptografada
+                   +--> busca imediata de cupons
+                   |
+                   v
+              Worker 24/7
+              /        \
+        Telegram     Fontes de cupons
 ```
 
-### Por que o painel não altera `.env`
+## Instalação rápida
 
-`.env` é configuração do servidor. Em um sistema compartilhado, gravar o API Hash de cada usuário no mesmo `.env` seria inseguro e inviável.
+Para uma instalação nova:
 
-Na V2, o usuário informa `api_id`, `api_hash` e telefone no painel. A **Control API** recebe esses dados autenticada pelo token do Supabase, criptografa os segredos e salva no backend. O navegador não recebe a sessão Telethon de volta.
+1. Crie um projeto no Supabase.
+2. Execute **somente** `sql/fresh_install.sql`.
+3. Copie `server/.env.example` para `server/.env` e preencha seus valores.
+4. Gere `CONFIG_ENCRYPTION_KEY`.
+5. Instale `server/requirements.txt`.
+6. Configure `config.js` com a URL/publishable key do seu Supabase e a URL HTTPS da Control API.
+7. Inicie a Control API e o worker.
+8. Publique o frontend.
+9. Configure no Supabase as URLs de redirecionamento do frontend.
 
-## Instalação nova
+O tutorial completo, incluindo Oracle Cloud, DuckDNS, Caddy, systemd, firewall, GitHub Pages e atualização, está em:
 
-### 1. Supabase
+**[docs/README_INSTALACAO_COMPLETA.md](docs/README_INSTALACAO_COMPLETA.md)**
 
-Crie um projeto e execute:
+## SQL
+
+- `sql/fresh_install.sql`: instalação nova completa na versão atual.
+- `sql/upgrade_v1_to_v2.sql`: migração de instalação antiga V1.
+- `sql/upgrade_coupon_sources_v3.sql`: atualização de instalações V2 antigas para múltiplas fontes + retenção de cupons em 48h.
+- `sql/README.md`: ordem correta para cada cenário.
+
+Para projeto novo, não execute migrações antigas: use apenas `fresh_install.sql`.
+
+## Frontend
+
+A versão oficial do frontend fica na raiz:
 
 ```text
-sql/fresh_install.sql
+index.html
+app.js
+style.css
+config.js
 ```
 
-Esse arquivo é o SQL completo da versão atual.
+`config.example.js` mostra o formato para uma instalação própria.
 
-Em **Authentication**, configure o cadastro por e-mail conforme sua preferência. Para uso entre amigos, é recomendável manter confirmação de e-mail.
+A URL do Supabase, a **publishable key** e a URL pública da Control API são configurações de cliente e ficam visíveis para qualquer navegador. Nunca coloque no frontend:
 
-### 2. Backend
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CONFIG_ENCRYPTION_KEY`
+- Telegram API Hash
+- telefone
+- StringSession / arquivos `.session`
+- senha ou token DuckDNS
+- chave SSH
+
+## Backend local
 
 ```bash
 cd server
 python -m venv .venv
-```
-
-Ative o ambiente e instale:
-
-```bash
+source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Copie:
+No Windows PowerShell:
 
-```text
-.env.example -> .env
+```powershell
+cd server
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Gere a chave de criptografia:
+Gere a chave Fernet:
 
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Preencha:
-
-```env
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_PUBLISHABLE_KEY=
-CONFIG_ENCRYPTION_KEY=
-ALLOWED_ORIGINS=http://localhost:8080
-```
-
-Nunca coloque a `service_role` no painel web.
-
-### 3. Control API
+Inicie a API:
 
 ```bash
 python run_control_api.py
 ```
-
-Padrão:
-
-```text
-http://localhost:8787
-```
-
-### 4. Worker
 
 Em outro terminal:
 
@@ -119,184 +132,91 @@ Em outro terminal:
 python multi_user_worker.py
 ```
 
-### 5. Painel web
-
-Copie:
-
-```text
-web/config.example.js -> web/config.js
-```
-
-Preencha:
-
-```javascript
-window.APP_CONFIG = {
-  SUPABASE_URL: "https://...",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_...",
-  CONTROL_API_URL: "http://localhost:8787"
-};
-```
-
 Teste:
 
-```bash
-cd web
-python -m http.server 8080
-```
-
-Abra:
-
 ```text
-http://localhost:8080
+http://localhost:8787/health
 ```
 
-## Primeiro acesso de um usuário
+## Primeiro acesso
 
-1. Clique em **Criar conta**.
-2. Confirme o e-mail, se exigido.
-3. Entre no painel.
-4. Abra **Telegram**.
-5. Acesse `my.telegram.org`.
-6. Abra **API development tools**.
-7. Crie uma aplicação e copie `api_id` e `api_hash`.
-8. Informe o telefone com DDI.
-9. Clique em **Enviar código**.
-10. Digite o código recebido.
-11. Se necessário, informe a senha 2FA.
-12. Quando aparecer **Conectado**, cadastre palavras e grupos.
+Depois de criar a conta e entrar, o painel mostra **Configure a conexão do Telegram**.
 
-## Histórico de 24 horas
+O usuário deve:
 
-A função:
+1. abrir `my.telegram.org`;
+2. acessar **API development tools**;
+3. criar uma aplicação;
+4. copiar `api_id` e `api_hash`;
+5. informar telefone com DDI;
+6. confirmar o código do Telegram;
+7. informar 2FA, se a conta utilizar;
+8. aguardar o status **Conectado**;
+9. cadastrar palavras e grupos.
 
-```sql
-select public.tg_cleanup_old_data();
-```
+## Cupons
 
-remove ocorrências com mais de 24 horas.
+Ao cadastrar uma loja, o backend consulta as fontes selecionadas imediatamente e o worker repete a busca periodicamente.
 
-O SQL tenta agendar essa limpeza a cada hora com `pg_cron`. Se o projeto não permitir o agendamento automático, chame a função com outro scheduler.
+Somente resultados com código digitável são gravados pelas fontes externas. Quando disponível, também são salvos desconto e descrição/regra.
 
-## Central de cupons
-
-### Telegram
-
-Mensagens encontradas que parecem conter cupom, código, voucher, OFF ou desconto também são colocadas em `tg_coupons`.
-
-### Sites de cupons
-
-Cadastre uma loja na aba **Lojas**:
-
-```text
-Nome: KaBuM
-Slug: kabum
-Fontes: Méliuz + Cuponeria
-```
-
-O worker consulta periodicamente páginas públicas como:
-
-```text
-https://www.meliuz.com.br/cupom/kabum
-https://www.cuponeria.com.br/cupom-desconto/kabum
-```
-
-Os coletores são **best-effort**. Sites de terceiros podem mudar o HTML, passar a exigir JavaScript, limitar acessos ou alterar suas regras. Por isso cada fonte fica isolada em:
+Sites de terceiros podem alterar URLs, HTML, JavaScript, proteção anti-bot ou termos de uso. O coletor fica isolado em:
 
 ```text
 server/coupon_sources.py
 ```
 
-Antes de usar em escala, verifique termos de uso e `robots.txt` das fontes. Se existir API oficial ou parceria, prefira a API em vez de scraping.
+Prefira APIs oficiais/parcerias quando existirem.
 
-## Atualizar um projeto V1 existente
+## Retenção
 
-Não execute o upgrade sem backup.
+- ocorrências Telegram: **24 horas**;
+- cupons: **48 horas desde a última confirmação**.
 
-1. Abra:
-   `sql/upgrade_v1_to_v2.sql`
-2. Troque:
-   `REPLACE_WITH_OWNER_UUID`
-   pelo UUID do seu usuário atual em Supabase Authentication.
-3. Execute o arquivo.
-4. Depois execute `sql/fresh_install.sql`.
+A função é:
 
-O segundo arquivo completa triggers, policies, funções e cron da V2.
-
-## Migrar SQLite antigo para uma instalação V2 limpa
-
-Use:
-
-```text
-legacy/migrate_sqlite_to_v2.py
+```sql
+select public.tg_cleanup_old_data();
 ```
 
-No `.env` da migração:
+O SQL tenta agendá-la com `pg_cron`.
 
-```env
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-OWNER_USER_ID=UUID_DO_USUARIO
-```
+## Publicação segura
 
-Execute:
+Antes de publicar uma cópia/fork, confira **[SECURITY.md](SECURITY.md)**.
 
-```bash
-python legacy/migrate_sqlite_to_v2.py "/caminho/telegram_monitor.db"
-```
-
-## Painel Windows
-
-```bash
-cd desktop
-pip install -r requirements.txt
-```
-
-Copie `.env.example` para `.env` e configure URL + Publishable Key do mesmo Supabase.
-
-```bash
-python desktop_app_v2.py
-```
-
-O Windows usa o mesmo login e as mesmas tabelas do site. O visual foi aproximado ao painel web. A configuração inicial do Telegram abre o painel web, evitando guardar o API Hash ou a sessão no desktop.
-
-## Rodar 24/7 no Linux
-
-Há dois exemplos de serviço:
-
-```text
-deploy/systemd/promo-monitor-api.service
-deploy/systemd/promo-monitor-worker.service
-```
-
-Ajuste usuário e caminhos antes de ativar.
-
-## Publicar no GitHub sem seus dados
-
-O projeto inclui `.gitignore`. Antes do primeiro `git push`, confirme que não existem no repositório:
-
-- `.env`
-- `web/config.js`
-- `*.session`
-- `*.db`
-- `sb_secret`
-- API Hash
-- telefone
-- senha
-- `CONFIG_ENCRYPTION_KEY`
-
-Nunca publique uma sessão Telethon. Uma sessão autenticada pode dar acesso à conta Telegram enquanto for válida.
+O repositório não deve conter `.env`, banco SQLite, sessão Telegram, service role, chave Fernet, chave SSH, token DuckDNS ou telefone.
 
 ## Estrutura
 
 ```text
 promo-monitor/
-├── web/
+├── index.html
+├── app.js
+├── style.css
+├── config.js
+├── config.example.js
 ├── server/
-├── desktop/
+│   ├── .env.example
+│   ├── control_api.py
+│   ├── multi_user_worker.py
+│   ├── coupon_sources.py
+│   └── ...
 ├── sql/
+├── deploy/
+│   └── systemd/
+├── desktop/
 ├── legacy/
-├── deploy/systemd/
+├── docs/
+├── SECURITY.md
 ├── README.md
-├── LICENSE
-└── .gitignore
+└── LICENSE
 ```
+
+## Canal separado para alertas
+
+O Telegram continua sendo a fonte monitorada. Para receber os alertas em um aplicativo separado, a opção mais simples para uma atualização futura é **ntfy**; outra alternativa é um canal privado do **Discord** via webhook. Veja `docs/ALERTAS_EXTERNOS.md`.
+
+## Atualizações
+
+Depois da instalação inicial, normalmente basta atualizar os arquivos do repositório e reiniciar API/worker. O procedimento está na seção **Atualizar uma VM existente** do guia completo.
