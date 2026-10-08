@@ -219,14 +219,14 @@ promo-monitor/
 
 O Telegram é usado como **fonte monitorada**, mas os matches são enviados pelo **ntfy**. Cada usuário possui um tópico aleatório salvo em `tg_alert_settings`.
 
-Na aba **Telegram → Alertas no ntfy**:
+Na aba **Configurar Conexão → Alertas no ntfy**:
 
 1. copie o tópico;
 2. instale o aplicativo ntfy;
 3. assine esse tópico;
 4. clique em **Enviar teste**.
 
-É possível regenerar o tópico a qualquer momento. Depois de trocar o tópico, assine o novo endereço no aplicativo.
+É possível gerar outro tópico automático ou escolher um nome personalizado. O nome personalizado precisa conter pelo menos uma letra e um número; o sistema normaliza o texto e acrescenta um sufixo aleatório de segurança. Exemplo: `promocao 001` pode virar `promocao-001-k7m4q2x9ab`. Depois de trocar o tópico no painel, inscreva-se no ntfy usando exatamente o mesmo nome.
 
 Veja `docs/ALERTAS_EXTERNOS.md`.
 
