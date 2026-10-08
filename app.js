@@ -14,6 +14,8 @@
     auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
   });
   const $ = id => document.getElementById(id);
+  const recoveryRedirectUrl = `${window.location.origin}${window.location.pathname}`;
+  let passwordRecoveryMode = false;
 
   const state = {
     session:null,user:null,keywords:[],groups:[],requests:[],occurrences:[],
@@ -58,13 +60,25 @@
 
   function setAuthMode(mode){
     const login=mode==="login";
-    $("loginForm").hidden=!login; $("signupForm").hidden=login;
+    const signup=mode==="signup";
+    const recovery=mode==="recovery";
+    const reset=mode==="reset";
+    $("loginForm").hidden=!login;
+    $("signupForm").hidden=!signup;
+    $("recoveryForm").hidden=!recovery;
+    $("resetPasswordForm").hidden=!reset;
+    $("authTabs").hidden=recovery||reset;
     $("tabLogin").classList.toggle("active",login);
-    $("tabSignup").classList.toggle("active",!login);
+    $("tabSignup").classList.toggle("active",signup);
     $("authMessage").hidden=true;
   }
   $("tabLogin").onclick=()=>setAuthMode("login");
   $("tabSignup").onclick=()=>setAuthMode("signup");
+  $("forgotPasswordBtn").onclick=()=>{
+    $("recoveryEmail").value=$("loginEmail").value.trim();
+    setAuthMode("recovery");
+  };
+  $("backToLoginBtn").onclick=()=>setAuthMode("login");
 
   $("loginForm").addEventListener("submit",async e=>{
     e.preventDefault();
@@ -73,6 +87,33 @@
     });
     if(error) return fail(error);
     await setSession(data.session);
+  });
+
+  $("recoveryForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const email=$("recoveryEmail").value.trim();
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirectUrl});
+    if(error) return fail(error);
+    const m=$("authMessage");
+    m.hidden=false;
+    m.textContent="Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha.";
+  });
+
+  $("resetPasswordForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const password=$("resetPassword").value;
+    const confirmPassword=$("resetPasswordConfirm").value;
+    if(password!==confirmPassword) return notify("As senhas não coincidem.","error");
+    const {error}=await db.auth.updateUser({password});
+    if(error) return fail(error);
+    passwordRecoveryMode=false;
+    $("resetPassword").value="";
+    $("resetPasswordConfirm").value="";
+    history.replaceState({},document.title,window.location.pathname);
+    await db.auth.signOut();
+    await setSession(null);
+    setAuthMode("login");
+    notify("Senha alterada. Entre novamente com a nova senha.","success");
   });
 
   $("signupForm").addEventListener("submit",async e=>{
@@ -92,11 +133,30 @@
 
   $("logoutBtn").onclick=async()=>{ await db.auth.signOut(); await setSession(null); };
 
+  $("changePasswordForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const password=$("changePassword").value;
+    const confirmPassword=$("changePasswordConfirm").value;
+    if(password!==confirmPassword) return notify("As senhas não coincidem.","error");
+    const {error}=await db.auth.updateUser({password});
+    if(error) return fail(error);
+    $("changePassword").value="";
+    $("changePasswordConfirm").value="";
+    notify("Senha alterada no Supabase com sucesso.","success");
+  });
+
   async function setSession(session){
     state.session=session; state.user=session?.user||null;
+    if(passwordRecoveryMode){
+      $("authView").hidden=false;
+      $("appView").hidden=true;
+      setAuthMode("reset");
+      return;
+    }
     $("authView").hidden=!!state.user; $("appView").hidden=!state.user;
     if(!state.user) return;
     $("userEmail").textContent=state.user.email||"";
+    $("accountEmail").textContent=state.user.email||"—";
     await loadAll();
   }
 
@@ -378,7 +438,7 @@
     document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
     $(`view-${name}`)?.classList.add("active");
     document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));
-    const titles={dashboard:"Dashboard",keywords:"Palavras-chave",groups:"Grupos",coupons:"Cupons",stores:"Lojas de interesse",history:"Histórico 24h",telegram:"Configuração do Telegram",project:"Projeto"};
+    const titles={dashboard:"Dashboard",keywords:"Palavras-chave",groups:"Grupos",coupons:"Cupons",stores:"Lojas de interesse",history:"Histórico 24h",telegram:"Configuração do Telegram",account:"Minha conta",project:"Projeto"};
     $("pageTitle").textContent=titles[name]||"Promo Monitor";
     refresh(name).catch(fail);
   }
@@ -395,7 +455,13 @@
   document.querySelectorAll(".nav[data-view]").forEach(x=>x.onclick=()=>switchView(x.dataset.view));
   document.querySelectorAll("[data-jump]").forEach(x=>x.onclick=()=>switchView(x.dataset.jump));
 
-  db.auth.onAuthStateChange((_event,session)=>setSession(session).catch(fail));
+  db.auth.onAuthStateChange((event,session)=>{
+    if(event==="PASSWORD_RECOVERY"){
+      passwordRecoveryMode=true;
+      return setSession(session).catch(fail);
+    }
+    setSession(session).catch(fail);
+  });
   db.auth.getSession().then(({data})=>setSession(data.session).catch(fail));
 
   setInterval(()=>{
