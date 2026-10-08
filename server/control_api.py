@@ -1,4 +1,5 @@
 import asyncio
+import httpx
 import os
 from datetime import datetime, timezone
 
@@ -27,7 +28,7 @@ origins = [
     if x.strip()
 ]
 
-app = FastAPI(title="Promo Monitor Control API", version="2.1.0")
+app = FastAPI(title="Promo Monitor Control API", version="2.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -76,7 +77,7 @@ def get_private(user_id):
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "version": "2.1.0"}
+    return {"ok": True, "version": "2.2.0"}
 
 @app.post("/coupons/scan")
 async def scan_store_coupons(body: ScanStoreBody, user_id: str = Depends(current_user_id)):
@@ -145,6 +146,44 @@ async def scan_store_coupons(body: ScanStoreBody, user_id: str = Depends(current
         "total": total,
         "sources": results,
     }
+
+
+@app.post("/alerts/ntfy/test")
+async def test_ntfy_alert(user_id: str = Depends(current_user_id)):
+    settings = (
+        db.table("tg_alert_settings")
+        .select("provider,ntfy_topic,ntfy_priority")
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if not settings or settings.get("provider") != "ntfy":
+        raise HTTPException(status_code=400, detail="Ative o ntfy antes de testar.")
+
+    topic = str(settings.get("ntfy_topic") or "").strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="Tópico ntfy não configurado.")
+
+    priority = min(5, max(1, int(settings.get("ntfy_priority") or 5)))
+
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as http:
+            response = await http.post(
+                f"https://ntfy.sh/{topic}",
+                content="Teste do Promo Monitor. Se esta mensagem chegou, os alertas ntfy estão configurados.".encode("utf-8"),
+                headers={
+                    "Title": "Promo Monitor - Teste",
+                    "Priority": str(priority),
+                    "Tags": "white_check_mark",
+                    "Content-Type": "text/plain; charset=utf-8",
+                },
+            )
+            response.raise_for_status()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar para ntfy: {exc}")
+
+    return {"ok": True, "topic": topic}
 
 
 @app.get("/telegram/status")
