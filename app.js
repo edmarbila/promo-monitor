@@ -180,7 +180,9 @@
   async function loadCoupons(){
     const {data,error}=await db.from("tg_coupons").select("*").eq("active",true)
       .order("last_seen_at",{ascending:false}).limit(400);
-    if(error) throw error; state.coupons=data||[]; renderCoupons(); renderRecentCoupons();
+    if(error) throw error;
+    state.coupons=(data||[]).filter(x=>x.source==="telegram" || String(x.code||"").trim());
+    renderCoupons(); renderRecentCoupons();
   }
   async function loadStores(){
     const {data,error}=await db.from("tg_coupon_sites").select("*").order("store_name");
@@ -242,8 +244,20 @@
     e.preventDefault();
     try{
       const word=$("keywordInput").value.trim(); if(!word)return;
+      const existing=state.keywords.find(x=>String(x.word||"").trim().toLocaleLowerCase("pt-BR")===word.toLocaleLowerCase("pt-BR"));
+      if(existing){
+        notify(`A palavra "${existing.word}" já está cadastrada. A busca não diferencia maiúsculas de minúsculas.`,"error");
+        return;
+      }
       const {error}=await db.from("tg_keywords").insert({user_id:state.user.id,word,active:true});
-      if(error)throw error; $("keywordInput").value=""; await loadKeywords(); renderCounts(); notify("Palavra adicionada.","success");
+      if(error){
+        if(String(error.code||"")==="23505"){
+          notify("Essa palavra já está cadastrada. A busca considera BUG, Bug e bug como a mesma palavra.","error");
+          return;
+        }
+        throw error;
+      }
+      $("keywordInput").value=""; await loadKeywords(); renderCounts(); notify("Palavra adicionada.","success");
     }catch(e2){fail(e2);}
   });
 
@@ -323,11 +337,24 @@
     const s=document.createElement("strong"); s.textContent=x.store_name||"Cupom";
     const meta=document.createElement("div"); meta.className="meta"; meta.textContent=`${x.discount_text||"oferta"} • ${fmt(x.last_seen_at)}`;
     left.append(s,meta);
-    const tag=document.createElement("span"); tag.className="tag"; tag.textContent=x.source;
+    const tag=document.createElement("span"); tag.className="tag";
+    tag.textContent=({meliuz:"Méliuz",cuponeria:"Cuponeria",telegram:"Telegram",manual:"Manual"})[x.source]||x.source;
     top.append(left,tag);
-    const title=document.createElement("p"); title.className="coupon-title"; title.textContent=x.title||"";
+    const title=document.createElement("p"); title.className="coupon-title";
+    title.textContent=x.title||(`Cupom ${x.store_name||""}`.trim());
     card.append(top,title);
-    if(x.code){const c=document.createElement("div");c.className="code";c.textContent=x.code;card.append(c);}
+    if(x.details){
+      const details=document.createElement("p");
+      details.className="coupon-details";
+      details.textContent=x.details;
+      card.append(details);
+    }
+    if(x.code){
+      const c=document.createElement("div");c.className="code";
+      const label=document.createElement("span");label.textContent="Código";
+      const value=document.createElement("strong");value.textContent=x.code;
+      c.append(label,value);card.append(c);
+    }
     const actions=document.createElement("div"); actions.className="actions";
     if(x.code) actions.append(btn("Copiar","btn mini secondary",()=>{navigator.clipboard?.writeText(x.code);notify("Código copiado.","success");}));
     if(x.source_url){const a=document.createElement("a");a.className="btn mini secondary link";a.href=x.source_url;a.target="_blank";a.rel="noopener";a.textContent="Abrir fonte";actions.append(a);}
@@ -339,7 +366,7 @@
     return state.coupons.filter(x=>{
       if(source && x.source!==source)return false;
       if(!q)return true;
-      return [x.store_name,x.title,x.code,x.discount_text].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(q);
+      return [x.store_name,x.title,x.code,x.discount_text,x.details].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(q);
     });
   }
   function renderCoupons(){
