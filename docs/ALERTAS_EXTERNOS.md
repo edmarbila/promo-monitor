@@ -5,14 +5,17 @@ A partir da versão 2.2, o Telegram continua sendo a **fonte das mensagens monit
 ## Como configurar
 
 1. Instale o aplicativo ntfy no celular.
-2. Entre no Promo Monitor.
-3. Abra **Configurar Conexão → Alertas no ntfy**.
-4. Copie o tópico mostrado no painel.
-5. No ntfy, escolha **Inscrever-se em tópico** e cole o tópico.
-6. No Promo Monitor, deixe **Ativar alertas pelo ntfy** marcado.
-7. Escolha a prioridade.
-8. Clique em **Salvar**.
-9. Clique em **Enviar teste**.
+2. Use o servidor padrão **ntfy.sh**; não é necessário criar outro servidor.
+3. Entre no Promo Monitor.
+4. Abra **Configurar Conexão → Alertas no ntfy**.
+5. Copie o tópico mostrado no painel.
+6. No ntfy, escolha **Inscrever-se em tópico** e cole exatamente esse tópico.
+7. No Promo Monitor, deixe **Ativar alertas pelo ntfy** marcado.
+8. Escolha a prioridade.
+9. Clique em **Salvar tópico**.
+10. Clique em **Enviar teste**.
+
+O botão **Enviar teste não salva, não regenera e não altera o tópico**. Ele envia somente para o tópico que já está salvo no Supabase. Se houver alterações ainda não salvas, o painel pede para salvar antes.
 
 ## Tópico
 
