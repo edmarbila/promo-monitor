@@ -409,7 +409,19 @@ async def coupon_scan_once():
                     store_slug=site["store_slug"],
                     timeout=COUPON_HTTP_TIMEOUT,
                 )
+                # Só mantém ativos os cupons que a fonte confirmou nesta varredura.
+                await asyncio.to_thread(
+                    lambda site=site, source=source: db.table("tg_coupons")
+                    .update({"active": False})
+                    .eq("user_id", site["user_id"])
+                    .eq("source", source)
+                    .eq("store_name", site["store_name"])
+                    .execute()
+                )
+
                 for item in results:
+                    if not item.code:
+                        continue
                     payload = {
                         "user_id": site["user_id"],
                         "coupon_key": coupon_key(item.source,item.store_name,item.title,item.code),
