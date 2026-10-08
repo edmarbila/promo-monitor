@@ -392,8 +392,25 @@
       if($("sourcePromobit").checked)sources.push("promobit");
       if(!sources.length)throw new Error("Selecione pelo menos uma fonte.");
       const slug=slugify(name);
-      const {error}=await db.from("tg_coupon_sites").insert({user_id:state.user.id,store_name:name,store_slug:slug,sources,active:true});
-      if(error)throw error; $("storeName").value="";await loadStores();notify("Loja cadastrada. O worker fará a busca nas fontes selecionadas.","success");
+      const {data,error}=await db.from("tg_coupon_sites")
+        .insert({user_id:state.user.id,store_name:name,store_slug:slug,sources,active:true})
+        .select("id").single();
+      if(error)throw error;
+      $("storeName").value="";
+      await loadStores();
+      notify("Loja cadastrada. Buscando cupons agora...","success");
+      try{
+        const scan=await api("/coupons/scan",{method:"POST",body:JSON.stringify({store_id:data.id})});
+        await loadCoupons(); renderCounts();
+        if(scan.total>0){
+          notify(`${scan.total} código(s) de cupom encontrado(s) para ${name}.`,"success");
+        }else{
+          notify(`Busca concluída para ${name}. Nenhum código digitável ativo foi encontrado nas fontes agora.`);
+        }
+      }catch(scanError){
+        console.error(scanError);
+        notify("Loja cadastrada, mas a busca imediata falhou. O worker tentará novamente no próximo ciclo.","error");
+      }
     }catch(e2){fail(e2);}
   });
   function renderStores(){
