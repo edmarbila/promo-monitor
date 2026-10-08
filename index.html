@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#06101d">
+  <title>Promo Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toast" class="toast" hidden></div>
+
+<main id="authView" class="auth-page">
+  <section class="auth-card">
+    <div class="logo">P</div>
+    <h1>Promo Monitor</h1>
+    <p>Telegram, alertas e cupons em um só painel.</p>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active">Entrar</button>
+      <button id="tabSignup">Criar conta</button>
+    </div>
+
+    <form id="loginForm" class="stack">
+      <label>E-mail<input id="loginEmail" type="email" required></label>
+      <label>Senha<input id="loginPassword" type="password" required></label>
+      <button class="btn primary">Entrar</button>
+    </form>
+
+    <form id="signupForm" class="stack" hidden>
+      <label>Nome<input id="signupName" type="text" required></label>
+      <label>E-mail<input id="signupEmail" type="email" required></label>
+      <label>Senha<input id="signupPassword" type="password" minlength="8" required></label>
+      <button class="btn primary">Criar conta</button>
+    </form>
+    <p id="authMessage" class="muted" hidden></p>
+  </section>
+</main>
+
+<div id="appView" class="app" hidden>
+  <aside>
+    <div class="brand">
+      <div class="logo small">P</div>
+      <div><strong>Promo Monitor</strong><span>Telegram + Cupons</span></div>
+    </div>
+
+    <nav>
+      <button class="nav active" data-view="dashboard">Dashboard</button>
+      <button class="nav" data-view="keywords">Palavras</button>
+      <button class="nav" data-view="groups">Grupos</button>
+      <button class="nav" data-view="coupons">Cupons</button>
+      <button class="nav" data-view="stores">Lojas</button>
+      <button class="nav" data-view="history">Histórico 24h</button>
+      <button class="nav" data-view="telegram">Telegram</button>
+      <button class="nav" data-view="project">Projeto</button>
+    </nav>
+
+    <div class="aside-footer">
+      <span id="userEmail"></span>
+      <button id="logoutBtn" class="btn ghost">Sair</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header>
+      <div><small>PROMO MONITOR</small><h2 id="pageTitle">Dashboard</h2></div>
+      <div id="workerBadge" class="badge"><i></i><span>Verificando...</span></div>
+    </header>
+
+    <div id="telegramBanner" class="banner" hidden>
+      <div><strong>Conecte seu Telegram</strong><span>Finalize a configuração para iniciar o monitoramento.</span></div>
+      <button class="btn primary" data-jump="telegram">Configurar</button>
+    </div>
+
+    <section id="view-dashboard" class="view active">
+      <div class="stats">
+        <article><span>Grupos ativos</span><strong id="countGroups">0</strong></article>
+        <article><span>Palavras ativas</span><strong id="countKeywords">0</strong></article>
+        <article><span>Ocorrências 24h</span><strong id="countOccurrences">0</strong></article>
+        <article><span>Cupons ativos</span><strong id="countCoupons">0</strong></article>
+      </div>
+      <div class="grid2">
+        <section class="panel"><div class="panel-head"><div><h3>Últimas ocorrências</h3><p>Apagadas automaticamente após 24 horas.</p></div></div><div id="recentOccurrences" class="list"></div></section>
+        <section class="panel"><div class="panel-head"><div><h3>Cupons recentes</h3><p>Telegram, Méliuz e Cuponeria.</p></div></div><div id="recentCoupons" class="list"></div></section>
+      </div>
+    </section>
+
+    <section id="view-keywords" class="view">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Palavras-chave</h3><p>Entram no worker automaticamente.</p></div></div>
+        <form id="keywordForm" class="inline"><input id="keywordInput" placeholder="Ex.: notebook, geladeira, cupom..." required><button class="btn primary">Adicionar</button></form>
+        <div id="keywordsList" class="list"></div>
+      </section>
+    </section>
+
+    <section id="view-groups" class="view">
+      <section class="panel"><div class="panel-head"><div><h3>Grupos monitorados</h3><p>Cada conta mantém seus próprios grupos.</p></div></div><div id="groupsList" class="list"></div></section>
+      <section class="panel">
+        <div class="panel-head"><div><h3>Adicionar grupo</h3><p>Informe @username ou ID.</p></div></div>
+        <form id="groupForm" class="inline"><input id="groupIdentifier" placeholder="@grupo ou ID" required><button class="btn primary">Adicionar</button></form>
+        <div id="requestsList" class="list compact"></div>
+      </section>
+    </section>
+
+    <section id="view-coupons" class="view">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Central de cupons</h3><p>Cupons encontrados nas mensagens e nas lojas cadastradas.</p></div></div>
+        <div class="filters"><input id="couponSearch" type="search" placeholder="Buscar loja, código ou desconto"><select id="couponSource"><option value="">Todas as fontes</option><option value="telegram">Telegram</option><option value="meliuz">Méliuz</option><option value="cuponeria">Cuponeria</option></select></div>
+        <div id="couponsList" class="list"></div>
+      </section>
+    </section>
+
+    <section id="view-stores" class="view">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Lojas de interesse</h3><p>O worker consulta as fontes periodicamente.</p></div></div>
+        <form id="storeForm" class="store-form">
+          <input id="storeName" placeholder="Nome da loja — Ex.: KaBuM" required>
+          <input id="storeSlug" placeholder="Slug opcional — Ex.: kabum">
+          <label><input id="sourceMeliuz" type="checkbox" checked> Méliuz</label>
+          <label><input id="sourceCuponeria" type="checkbox" checked> Cuponeria</label>
+          <button class="btn primary">Cadastrar</button>
+        </form>
+        <div id="storesList" class="list"></div>
+      </section>
+    </section>
+
+    <section id="view-history" class="view">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Histórico das últimas 24 horas</h3><p>O banco é limpo automaticamente.</p></div></div>
+        <input id="historySearch" type="search" placeholder="Filtrar por grupo, palavra ou mensagem">
+        <div id="historyList" class="list topgap"></div>
+      </section>
+    </section>
+
+    <section id="view-telegram" class="view">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Conexão do Telegram</h3><p id="telegramStatusText">Verificando...</p></div><span id="telegramPill" class="pill">—</span></div>
+        <div class="guide">
+          <h4>Como conseguir API ID e API Hash</h4>
+          <ol>
+            <li>Acesse <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a>.</li>
+            <li>Entre com seu número.</li>
+            <li>Abra <strong>API development tools</strong>.</li>
+            <li>Crie uma aplicação e copie <strong>api_id</strong> e <strong>api_hash</strong>.</li>
+            <li>Informe os dados abaixo e confirme o código recebido no Telegram.</li>
+          </ol>
+          <p>Os dados são enviados ao backend e armazenados criptografados. Eles não são gravados em um `.env` do navegador.</p>
+        </div>
+
+        <form id="telegramCredentialsForm" class="tg-form">
+          <label>API ID<input id="tgApiId" type="number" required></label>
+          <label>API Hash<input id="tgApiHash" type="password" required></label>
+          <label>Telefone<input id="tgPhone" type="tel" placeholder="+5511999999999" required></label>
+          <button class="btn primary">Enviar código</button>
+        </form>
+
+        <form id="telegramCodeForm" class="inline" hidden><input id="tgCode" placeholder="Código recebido" required><button class="btn primary">Confirmar</button></form>
+        <form id="telegram2faForm" class="inline" hidden><input id="tg2fa" type="password" placeholder="Senha 2FA" required><button class="btn primary">Confirmar 2FA</button></form>
+        <button id="disconnectTelegramBtn" class="btn danger" hidden>Desconectar Telegram</button>
+      </section>
+    </section>
+
+    <section id="view-project" class="view">
+      <section class="panel prose">
+        <h3>Como o projeto funciona</h3>
+        <p>O painel salva configurações no Supabase. A Control API faz a autenticação no Telegram e guarda os segredos criptografados. O worker fica online independentemente do navegador, monitora mensagens, mantém apenas 24 horas de histórico e alimenta a central de cupons.</p>
+        <p>Cada usuário é isolado por RLS e vê somente seus próprios dados.</p>
+      </section>
+    </section>
+  </main>
+
+  <nav class="mobile-nav">
+    <button class="nav active" data-view="dashboard">Início</button>
+    <button class="nav" data-view="keywords">Palavras</button>
+    <button class="nav" data-view="groups">Grupos</button>
+    <button class="nav" data-view="coupons">Cupons</button>
+    <button class="nav" data-view="telegram">Telegram</button>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
