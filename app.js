@@ -19,7 +19,7 @@
 
   const state = {
     session:null,user:null,keywords:[],groups:[],requests:[],occurrences:[],
-    coupons:[],stores:[],worker:null,telegram:null,view:"dashboard"
+    coupons:[],stores:[],worker:null,telegram:null,alerts:null,view:"dashboard"
   };
 
   function notify(msg,type=""){
@@ -198,10 +198,17 @@
     catch(e){ state.telegram={status:"error",last_error:e.message}; }
     renderTelegram();
   }
+  async function loadAlerts(){
+    const {data,error}=await db.from("tg_alert_settings").select("*")
+      .eq("user_id",state.user.id).maybeSingle();
+    if(error) throw error;
+    state.alerts=data||null;
+    renderAlerts();
+  }
   async function loadAll(){
     await Promise.all([
       loadKeywords(),loadGroups(),loadOccurrences(),loadCoupons(),
-      loadStores(),loadWorker(),loadTelegram()
+      loadStores(),loadWorker(),loadTelegram(),loadAlerts()
     ]);
     renderCounts();
   }
@@ -445,6 +452,91 @@
     }
   }
 
+  function randomNtfyTopic(){
+    const bytes=new Uint8Array(20);
+    crypto.getRandomValues(bytes);
+    return "promo-"+Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+  }
+
+  function renderAlerts(){
+    const a=state.alerts||{};
+    const enabled=a.provider!=="none";
+    const topic=String(a.ntfy_topic||"").trim();
+
+    $("ntfyEnabled").checked=enabled;
+    $("ntfyTopic").value=topic;
+    $("ntfyPriority").value=String(a.ntfy_priority||5);
+    $("ntfyPill").textContent=enabled?"ntfy ativo":"Desativado";
+    $("ntfyPill").className="pill"+(enabled?" ntfy-active":"");
+
+    if(topic){
+      $("ntfyOpenLink").href=`https://ntfy.sh/${encodeURIComponent(topic)}`;
+      $("ntfyOpenLink").hidden=false;
+      $("ntfyStatus").textContent=enabled
+        ?"Os próximos matches serão enviados para este tópico."
+        :"O tópico está salvo, mas os alertas estão desativados.";
+    }else{
+      $("ntfyOpenLink").hidden=true;
+      $("ntfyStatus").textContent="Gere um tópico para começar.";
+    }
+  }
+
+  async function saveNtfySettings(showMessage=true){
+    let topic=$("ntfyTopic").value.trim();
+    if(!topic){
+      topic=randomNtfyTopic();
+      $("ntfyTopic").value=topic;
+    }
+    const payload={
+      user_id:state.user.id,
+      provider:$("ntfyEnabled").checked?"ntfy":"none",
+      ntfy_topic:topic,
+      ntfy_priority:Number($("ntfyPriority").value||5)
+    };
+    const {data,error}=await db.from("tg_alert_settings")
+      .upsert(payload,{onConflict:"user_id"})
+      .select("*").single();
+    if(error) throw error;
+    state.alerts=data;
+    renderAlerts();
+    if(showMessage) notify("Configuração ntfy salva.","success");
+    return data;
+  }
+
+  $("ntfyGenerateBtn").onclick=()=>{
+    const topic=randomNtfyTopic();
+    $("ntfyTopic").value=topic;
+    $("ntfyOpenLink").href=`https://ntfy.sh/${encodeURIComponent(topic)}`;
+    $("ntfyOpenLink").hidden=false;
+    $("ntfyStatus").textContent="Novo tópico gerado. Clique em Salvar antes de testar.";
+  };
+
+  $("ntfyCopyBtn").onclick=async()=>{
+    const topic=$("ntfyTopic").value.trim();
+    if(!topic) return notify("Nenhum tópico configurado.","error");
+    try{
+      await navigator.clipboard.writeText(topic);
+      notify("Tópico copiado.","success");
+    }catch(e){
+      fail(e);
+    }
+  };
+
+  $("ntfySettingsForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    try{ await saveNtfySettings(true); }
+    catch(err){ fail(err); }
+  });
+
+  $("ntfyTestBtn").onclick=async()=>{
+    try{
+      $("ntfyEnabled").checked=true;
+      await saveNtfySettings(false);
+      await api("/alerts/ntfy/test",{method:"POST",body:"{}"});
+      notify("Notificação de teste enviada para o ntfy.","success");
+    }catch(err){ fail(err); }
+  };
+
   function maybeShowTelegramSetupPrompt(){
     if(!state.user || state.telegram?.status!=="not_configured") return;
     const key=`promo-monitor:telegram-setup:${state.user.id}`;
@@ -531,7 +623,7 @@
     if(name==="coupons")await loadCoupons();
     if(name==="stores")await loadStores();
     if(name==="history")await loadOccurrences();
-    if(name==="telegram")await Promise.all([loadTelegram(),loadWorker()]);
+    if(name==="telegram")await Promise.all([loadTelegram(),loadWorker(),loadAlerts()]);
     renderCounts();
   }
   document.querySelectorAll(".nav[data-view]").forEach(x=>x.onclick=()=>switchView(x.dataset.view));
