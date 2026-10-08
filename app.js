@@ -658,12 +658,43 @@
     catch(err){ fail(err); }
   });
 
+  function hasUnsavedNtfyChanges(){
+    const saved=state.alerts||{};
+    const savedTopic=String(saved.ntfy_topic||"").trim();
+    const currentTopic=$("ntfyTopic").value.trim();
+    const savedEnabled=saved.provider==="ntfy";
+    const currentEnabled=$("ntfyEnabled").checked;
+    const savedPriority=Number(saved.ntfy_priority||5);
+    const currentPriority=Number($("ntfyPriority").value||5);
+
+    return (
+      currentTopic!==savedTopic ||
+      currentEnabled!==savedEnabled ||
+      currentPriority!==savedPriority
+    );
+  }
+
   $("ntfyTestBtn").onclick=async()=>{
     try{
-      $("ntfyEnabled").checked=true;
-      await saveNtfySettings(false);
+      const savedTopic=String(state.alerts?.ntfy_topic||"").trim();
+
+      if(!savedTopic){
+        notify("Salve um tópico antes de enviar o teste.","error");
+        return;
+      }
+
+      if(hasUnsavedNtfyChanges()){
+        notify("Há alterações não salvas. Salve o tópico antes de testar. O teste nunca altera o tópico.","error");
+        return;
+      }
+
+      if(state.alerts?.provider!=="ntfy"){
+        notify("Ative o ntfy e salve a configuração antes de testar.","error");
+        return;
+      }
+
       await api("/alerts/ntfy/test",{method:"POST",body:"{}"});
-      notify("Notificação de teste enviada para o ntfy.","success");
+      notify(`Teste enviado para o tópico salvo: ${savedTopic}`,"success");
     }catch(err){ fail(err); }
   };
 
