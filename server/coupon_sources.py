@@ -59,6 +59,7 @@ _CODE_BLOCKED = {
     "OFERTA", "OFERTAS", "OFF", "BRASIL", "PRIMEIRA", "COMPRA",
     "SITE", "APP", "MELIUZ", "CUPONERIA", "REGRAS", "EXCLUSIVO",
     "VER", "COPIAR", "LOJA", "PROMOCAO", "PROMOÇÃO",
+    "TRUE", "FALSE", "NULL", "NONE", "ACTIVE", "INACTIVE", "EXPIRED",
 }
 
 
@@ -183,6 +184,41 @@ def _description(section, title, code):
     return text[:1000]
 
 
+def _embedded_codes(html):
+    found = []
+    seen = set()
+    patterns = [
+        r'(?i)["\'](?:coupon[_-]?code|couponcode|coupon_code|cupom|codigo|código)["\']\s*:\s*["\']([A-Z0-9][A-Z0-9_-]{2,39})["\']',
+        r'(?i)data-(?:coupon-code|coupon_code|cupom|codigo|code)=["\']([A-Z0-9][A-Z0-9_-]{2,39})["\']',
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, html):
+            code = _valid_code(match.group(1))
+            if code and code not in seen:
+                seen.add(code)
+                found.append(code)
+    return found
+
+
+def _source_urls(source, slug):
+    if source == "meliuz":
+        return [
+            f"https://www.meliuz.com.br/desconto/cupom-{slug}",
+            f"https://www.meliuz.com.br/desconto/cupom-desconto-{slug}",
+            f"https://www.meliuz.com.br/desconto/{slug}",
+        ]
+    if source == "cuponeria":
+        return [
+            f"https://www.cuponeria.com.br/cupom-desconto/{slug}",
+            f"https://www.cuponeria.com.br/cupom/{slug}",
+        ]
+    if source == "picodi":
+        return [f"https://www.picodi.com/br/{slug}"]
+    if source == "promobit":
+        return [f"https://www.promobit.com.br/cupons/loja/{slug}/"]
+    return []
+
+
 def _extract(source, store_name, url, html):
     soup = BeautifulSoup(html, "html.parser")
     results = []
@@ -230,16 +266,31 @@ def _extract(source, store_name, url, html):
         if len(results) >= 80:
             break
 
+    # Algumas fontes mantêm o código em JSON/data-attributes e só o revelam
+    # visualmente ao clicar em "Ver/Pegar cupom".
+    for code in _embedded_codes(html):
+        if code in seen_codes:
+            continue
+        seen_codes.add(code)
+        results.append(CouponResult(
+            source=source,
+            store_name=store_name,
+            title=f"Cupom {store_name}",
+            code=code,
+            discount_text=None,
+            details=None,
+            source_url=url,
+        ))
+        if len(results) >= 80:
+            break
+
     return results
 
 
 async def fetch_store_coupons(source, store_name, store_slug, timeout=20):
     slug = slugify(store_slug or store_name)
-    if source == "meliuz":
-        url = f"https://www.meliuz.com.br/desconto/cupom-desconto-{slug}"
-    elif source == "cuponeria":
-        url = f"https://www.cuponeria.com.br/cupom-desconto/{slug}"
-    else:
+    urls = _source_urls(source, slug)
+    if not urls:
         return []
 
     headers = {
@@ -252,8 +303,23 @@ async def fetch_store_coupons(source, store_name, store_slug, timeout=20):
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
 
+    last_success = None
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
-        response = await client.get(url)
-        response.raise_for_status()
+        for url in urls:
+            try:
+                response = await client.get(url)
+                if response.status_code == 404:
+                    continue
+                response.raise_for_status()
+                last_success = response
+                results = _extract(source, store_name, str(response.url), response.text)
+                if results:
+                    return results
+            except httpx.HTTPStatusError:
+                continue
 
-    return _extract(source, store_name, str(response.url), response.text)
+    # Página existe, mas não expôs nenhum código digitável no HTML.
+    # Não cadastramos oferta genérica como se fosse cupom.
+    if last_success is not None:
+        return []
+    return []
