@@ -23,6 +23,12 @@ input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(5
 .ghost,.secondary{background:var(--panel2);border:1px solid var(--line)}
 .danger{background:rgba(255,102,124,.13);color:#ff9dac;border:1px solid rgba(255,102,124,.3)}
 .muted{color:var(--muted)}
+.small-copy{font-size:13px;line-height:1.5;margin:0}
+.text-button{border:0;background:transparent;color:#8dc9ff;padding:0;text-align:right;font-weight:750;font-size:13px}
+.text-button:hover{text-decoration:underline}
+.account-email{margin-bottom:18px;color:var(--muted);font-size:14px}
+.account-email strong{color:var(--text)}
+.account-form{max-width:520px}
 .app{min-height:100vh;display:grid;grid-template-columns:260px 1fr}
 aside{position:sticky;top:0;height:100vh;padding:22px 16px;border-right:1px solid var(--line);background:rgba(7,15,27,.94);display:flex;flex-direction:column}
 .brand{display:flex;gap:12px;align-items:center;padding:0 8px 24px}.brand strong{display:block}.brand span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
@@ -66,6 +72,6 @@ nav{display:grid;gap:6px}.nav{border:0;background:transparent;color:var(--muted)
  body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}.app{display:block}aside{display:none}.content{padding:17px 13px}.content header{align-items:flex-start}
  .banner{align-items:flex-start}.stats{gap:9px}.stats article{padding:14px}.panel{padding:14px;border-radius:15px}.item{grid-template-columns:1fr}.actions{justify-content:flex-start}
  .inline,.filters,.store-form,.tg-form{grid-template-columns:1fr}.tg-form label:nth-child(3),.store-form .btn{grid-column:auto}
- .mobile-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;z-index:100;left:0;right:0;bottom:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(7,15,27,.98);border-top:1px solid var(--line)}
+ .mobile-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;z-index:100;left:0;right:0;bottom:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(7,15,27,.98);border-top:1px solid var(--line)}
  .mobile-nav .nav{text-align:center;padding:9px 2px;font-size:11px}
 }
