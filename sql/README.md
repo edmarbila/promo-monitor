@@ -27,6 +27,16 @@ Execute:
 upgrade_coupon_sources_v3.sql
 ```
 
+## Atualização para alertas ntfy
+
+Em uma instalação que já estava funcionando antes da versão 2.2, execute:
+
+```text
+upgrade_ntfy_alerts_v4.sql
+```
+
+Esse SQL cria um tópico ntfy aleatório por usuário, habilita RLS e deixa o ntfy como destino padrão.
+
 ## Retenção atual
 
 - ocorrências: 24 horas;
