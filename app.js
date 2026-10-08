@@ -445,6 +445,26 @@
     }
   }
 
+  function maybeShowTelegramSetupPrompt(){
+    if(!state.user || state.telegram?.status!=="not_configured") return;
+    const key=`promo-monitor:telegram-setup:${state.user.id}`;
+    if(sessionStorage.getItem(key)==="1") return;
+    $("telegramSetupModal").hidden=false;
+  }
+
+  function closeTelegramSetupPrompt(){
+    if(state.user){
+      sessionStorage.setItem(`promo-monitor:telegram-setup:${state.user.id}`,"1");
+    }
+    $("telegramSetupModal").hidden=true;
+  }
+
+  $("telegramSetupGoBtn").onclick=()=>{
+    closeTelegramSetupPrompt();
+    switchView("telegram");
+  };
+  $("telegramSetupLaterBtn").onclick=closeTelegramSetupPrompt;
+
   function renderTelegram(){
     const s=state.telegram?.status||"not_configured";
     const names={not_configured:"Não configurado",code_sent:"Código enviado","2fa_required":"2FA necessário",connected:"Conectado",error:"Erro",disconnected:"Desconectado"};
@@ -457,6 +477,11 @@
     $("telegram2faForm").hidden=s!=="2fa_required";
     $("disconnectTelegramBtn").hidden=s!=="connected";
     $("telegramBanner").hidden=s==="connected";
+    if(s==="connected"){
+      $("telegramSetupModal").hidden=true;
+    }else{
+      maybeShowTelegramSetupPrompt();
+    }
   }
 
   $("telegramCredentialsForm").addEventListener("submit",async e=>{
