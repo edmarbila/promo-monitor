@@ -1,47 +1,53 @@
-# Alertas externos: alternativa ao Telegram
+# Alertas pelo ntfy
 
-O Telegram pode continuar sendo usado como **fonte monitorada** sem precisar ser também o destino dos alertas.
+A partir da versão 2.2, o Telegram continua sendo a **fonte das mensagens monitoradas**, mas os matches de palavras-chave são enviados ao **ntfy**. O worker não envia mais esses alertas para “Mensagens Salvas” do Telegram.
 
-## Recomendação: ntfy
+## Como configurar
 
-O ntfy é um aplicativo de notificações para Android/iOS e também funciona como PWA. O servidor recebe mensagens por HTTP POST/PUT.
+1. Instale o aplicativo ntfy no celular.
+2. Entre no Promo Monitor.
+3. Abra **Telegram → Alertas no ntfy**.
+4. Copie o tópico mostrado no painel.
+5. No ntfy, escolha **Inscrever-se em tópico** e cole o tópico.
+6. No Promo Monitor, deixe **Ativar alertas pelo ntfy** marcado.
+7. Escolha a prioridade.
+8. Clique em **Salvar**.
+9. Clique em **Enviar teste**.
 
-Vantagens para o Promo Monitor:
+## Tópico
 
-- aplicativo separado do Telegram;
-- notificação push com som/vibração e prioridade;
-- implementação simples no worker;
-- pode usar o serviço hospedado ou ser auto-hospedado;
-- ideal para um canal dedicado apenas aos matches.
-
-Observação de segurança: em `ntfy.sh`, nomes de tópicos não reservados funcionam como um segredo; use um nome longo e imprevisível ou autenticação/self-hosting.
-
-## Alternativa: Discord
-
-Um servidor privado com um canal exclusivo também funciona bem. O worker pode enviar cada match para um webhook do Discord.
-
-Vantagens:
-
-- histórico em formato de chat;
-- canal separado;
-- aplicativo móvel/desktop;
-- webhook simples.
-
-## WeChat
-
-Não é a primeira escolha para este projeto. A automação em contas pessoais não oferece o mesmo fluxo simples que Telegram/Discord/ntfy; integrações oficiais são voltadas a produtos específicos da plataforma.
-
-## Estado no projeto
-
-A versão 2.1 continua enviando o alerta de match para **Mensagens Salvas do Telegram**.
-
-Uma atualização futura pode adicionar um seletor por usuário:
+Cada usuário recebe automaticamente um tópico longo e aleatório, parecido com:
 
 ```text
-Destino do alerta:
-[ ] Telegram
-[ ] ntfy
-[ ] Discord
+promo-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Para um aplicativo dedicado apenas aos alertas, a recomendação é começar por **ntfy**.
+No serviço público ntfy.sh, o tópico deve ser tratado como uma senha: quem souber o nome consegue tentar assinar o tópico. Não publique o tópico em repositórios, grupos ou capturas de tela.
+
+O botão **Gerar novo tópico** permite trocar o endereço. Depois de gerar um novo, salve e assine o novo tópico no aplicativo.
+
+## Prioridade
+
+O Promo Monitor permite:
+
+- 5 — Máxima;
+- 4 — Alta;
+- 3 — Normal.
+
+O padrão é **Máxima**, adequado para alertas de palavras-chave.
+
+## Teste
+
+O botão **Enviar teste** chama a Control API autenticada. A API publica uma mensagem de teste em:
+
+```text
+https://ntfy.sh/<TOPICO>
+```
+
+Se a notificação chegar, a configuração está pronta.
+
+## Segurança
+
+A integração atual usa apenas o serviço público `https://ntfy.sh` para evitar que uma URL personalizada controlada por usuário transforme o backend em um proxy para endereços internos.
+
+Para maior privacidade, uma versão futura pode suportar uma instância ntfy auto-hospedada com allowlist administrativa.
