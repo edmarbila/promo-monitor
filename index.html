@@ -98,7 +98,7 @@
       </div>
       <div class="grid2">
         <section class="panel"><div class="panel-head"><div><h3>Últimas ocorrências</h3><p>Apagadas automaticamente após 24 horas.</p></div></div><div id="recentOccurrences" class="list"></div></section>
-        <section class="panel"><div class="panel-head"><div><h3>Cupons recentes</h3><p>Telegram, Méliuz e Cuponeria.</p></div></div><div id="recentCoupons" class="list"></div></section>
+        <section class="panel"><div class="panel-head"><div><h3>Cupons recentes</h3><p>Telegram, Méliuz, Cuponeria, Picodi e Promobit.</p></div></div><div id="recentCoupons" class="list"></div></section>
       </div>
     </section>
 
@@ -122,7 +122,7 @@
     <section id="view-coupons" class="view">
       <section class="panel">
         <div class="panel-head"><div><h3>Central de cupons</h3><p>Cupons encontrados nas mensagens e nas lojas cadastradas.</p></div></div>
-        <div class="filters"><input id="couponSearch" type="search" placeholder="Buscar loja, código ou desconto"><select id="couponSource"><option value="">Todas as fontes</option><option value="telegram">Telegram</option><option value="meliuz">Méliuz</option><option value="cuponeria">Cuponeria</option></select></div>
+        <div class="filters"><input id="couponSearch" type="search" placeholder="Buscar loja, código ou desconto"><select id="couponSource"><option value="">Todas as fontes</option><option value="telegram">Telegram</option><option value="meliuz">Méliuz</option><option value="cuponeria">Cuponeria</option><option value="picodi">Picodi</option><option value="promobit">Promobit</option></select></div>
         <div id="couponsList" class="list"></div>
       </section>
     </section>
@@ -131,11 +131,14 @@
       <section class="panel">
         <div class="panel-head"><div><h3>Lojas de interesse</h3><p>O worker consulta as fontes periodicamente.</p></div></div>
         <form id="storeForm" class="store-form">
-          <input id="storeName" placeholder="Nome da loja — Ex.: KaBuM" required>
-          <input id="storeSlug" placeholder="Slug opcional — Ex.: kabum">
-          <label><input id="sourceMeliuz" type="checkbox" checked> Méliuz</label>
-          <label><input id="sourceCuponeria" type="checkbox" checked> Cuponeria</label>
-          <button class="btn primary">Cadastrar</button>
+          <input id="storeName" placeholder="Nome da loja — Ex.: Shopee, Amazon, KaBuM" required>
+          <div class="source-options">
+            <label><input id="sourceMeliuz" type="checkbox" checked> Méliuz</label>
+            <label><input id="sourceCuponeria" type="checkbox" checked> Cuponeria</label>
+            <label><input id="sourcePicodi" type="checkbox" checked> Picodi</label>
+            <label><input id="sourcePromobit" type="checkbox" checked> Promobit</label>
+          </div>
+          <button class="btn primary">Cadastrar e buscar</button>
         </form>
         <div id="storesList" class="list"></div>
       </section>
