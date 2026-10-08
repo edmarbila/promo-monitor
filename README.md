@@ -1,4 +1,4 @@
-# Promo Monitor V2.1
+# Promo Monitor V2.2
 
 Monitor multiusuário de palavras-chave do Telegram com painel web, worker 24/7 e central de códigos de cupom.
 
@@ -13,6 +13,7 @@ O projeto usa **Supabase Auth + PostgreSQL/RLS**, **Telethon**, **FastAPI**, um 
 - Palavras-chave não diferenciam maiúsculas/minúsculas: `BUG`, `Bug` e `bug` são a mesma busca.
 - Grupos e palavras isolados por usuário com RLS.
 - Worker continua monitorando mesmo com PC e navegador desligados.
+- Alertas dos matches enviados pelo **ntfy**, em aplicativo separado do Telegram.
 - Histórico de ocorrências com retenção de 24 horas.
 - Central de cupons com código, desconto, descrição/regra e origem quando disponíveis.
 - Motores de cupons: Telegram, Méliuz, Cuponeria, Picodi e Promobit.
@@ -67,6 +68,7 @@ O tutorial completo, incluindo Oracle Cloud, DuckDNS, Caddy, systemd, firewall, 
 - `sql/fresh_install.sql`: instalação nova completa na versão atual.
 - `sql/upgrade_v1_to_v2.sql`: migração de instalação antiga V1.
 - `sql/upgrade_coupon_sources_v3.sql`: atualização de instalações V2 antigas para múltiplas fontes + retenção de cupons em 48h.
+- `sql/upgrade_ntfy_alerts_v4.sql`: adiciona alertas ntfy em instalações já existentes.
 - `sql/README.md`: ordem correta para cada cenário.
 
 Para projeto novo, não execute migrações antigas: use apenas `fresh_install.sql`.
@@ -213,9 +215,20 @@ promo-monitor/
 └── LICENSE
 ```
 
-## Canal separado para alertas
+## Alertas ntfy
 
-O Telegram continua sendo a fonte monitorada. Para receber os alertas em um aplicativo separado, a opção mais simples para uma atualização futura é **ntfy**; outra alternativa é um canal privado do **Discord** via webhook. Veja `docs/ALERTAS_EXTERNOS.md`.
+O Telegram é usado como **fonte monitorada**, mas os matches são enviados pelo **ntfy**. Cada usuário possui um tópico aleatório salvo em `tg_alert_settings`.
+
+Na aba **Telegram → Alertas no ntfy**:
+
+1. copie o tópico;
+2. instale o aplicativo ntfy;
+3. assine esse tópico;
+4. clique em **Enviar teste**.
+
+É possível regenerar o tópico a qualquer momento. Depois de trocar o tópico, assine o novo endereço no aplicativo.
+
+Veja `docs/ALERTAS_EXTERNOS.md`.
 
 ## Atualizações
 
