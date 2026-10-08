@@ -338,7 +338,7 @@
     const meta=document.createElement("div"); meta.className="meta"; meta.textContent=`${x.discount_text||"oferta"} • ${fmt(x.last_seen_at)}`;
     left.append(s,meta);
     const tag=document.createElement("span"); tag.className="tag";
-    tag.textContent=({meliuz:"Méliuz",cuponeria:"Cuponeria",telegram:"Telegram",manual:"Manual"})[x.source]||x.source;
+    tag.textContent=({meliuz:"Méliuz",cuponeria:"Cuponeria",picodi:"Picodi",promobit:"Promobit",telegram:"Telegram",manual:"Manual"})[x.source]||x.source;
     top.append(left,tag);
     const title=document.createElement("p"); title.className="coupon-title";
     title.textContent=x.title||(`Cupom ${x.store_name||""}`.trim());
@@ -388,10 +388,12 @@
       const name=$("storeName").value.trim(); const sources=[];
       if($("sourceMeliuz").checked)sources.push("meliuz");
       if($("sourceCuponeria").checked)sources.push("cuponeria");
+      if($("sourcePicodi").checked)sources.push("picodi");
+      if($("sourcePromobit").checked)sources.push("promobit");
       if(!sources.length)throw new Error("Selecione pelo menos uma fonte.");
-      const slug=$("storeSlug").value.trim()||slugify(name);
+      const slug=slugify(name);
       const {error}=await db.from("tg_coupon_sites").insert({user_id:state.user.id,store_name:name,store_slug:slug,sources,active:true});
-      if(error)throw error; $("storeName").value="";$("storeSlug").value="";await loadStores();notify("Loja cadastrada.","success");
+      if(error)throw error; $("storeName").value="";await loadStores();notify("Loja cadastrada. O worker fará a busca nas fontes selecionadas.","success");
     }catch(e2){fail(e2);}
   });
   function renderStores(){
