@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import httpx
 import os
 import re
 import traceback
@@ -15,7 +16,7 @@ from telethon.sessions import StringSession
 from crypto_utils import decrypt_text
 from coupon_sources import fetch_store_coupons, coupon_key
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 CONFIG_REFRESH_SECONDS = 10
 ACCOUNT_SYNC_SECONDS = 20
 GROUP_REQUEST_SECONDS = 5
@@ -29,6 +30,39 @@ db = create_client(
 )
 
 running_tasks = {}
+
+async def send_ntfy(settings, keyword, group_name, sender_name, message, message_link=""):
+    if not settings or settings.get("provider") != "ntfy":
+        return
+
+    topic = str(settings.get("ntfy_topic") or "").strip()
+    if not topic:
+        return
+
+    priority = int(settings.get("ntfy_priority") or 5)
+    priority = min(5, max(1, priority))
+
+    body = (
+        f"Palavra: {keyword}\n"
+        f"Grupo: {group_name}\n"
+        f"Usuario: {sender_name}\n\n"
+        f"{message}"
+    )
+    if message_link:
+        body += f"\n\nAbrir mensagem: {message_link}"
+
+    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as http:
+        response = await http.post(
+            f"https://ntfy.sh/{topic}",
+            content=body.encode("utf-8"),
+            headers={
+                "Title": "Promo Monitor - Alerta",
+                "Priority": str(priority),
+                "Tags": "rotating_light",
+                "Content-Type": "text/plain; charset=utf-8",
+            },
+        )
+        response.raise_for_status()
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
@@ -198,11 +232,11 @@ async def user_monitor_loop(account):
         return
 
     client = TelegramClient(StringSession(session_string), api_id, api_hash)
-    config = {"groups": set(), "keywords": []}
+    config = {"groups": set(), "keywords": [], "alerts": {"provider":"none"}}
     last_error = None
 
     async def refresh_config():
-        groups_resp, keywords_resp = await asyncio.gather(
+        groups_resp, keywords_resp, alerts_resp = await asyncio.gather(
             asyncio.to_thread(
                 lambda: db.table("tg_groups")
                 .select("telegram_group_id")
@@ -215,6 +249,13 @@ async def user_monitor_loop(account):
                 .select("word")
                 .eq("user_id", user_id)
                 .eq("active", True)
+                .execute()
+            ),
+            asyncio.to_thread(
+                lambda: db.table("tg_alert_settings")
+                .select("provider,ntfy_topic,ntfy_priority")
+                .eq("user_id", user_id)
+                .maybe_single()
                 .execute()
             ),
         )
@@ -230,6 +271,7 @@ async def user_monitor_loop(account):
             if str(row.get("word","")).strip()
         ]
         config["keywords"] = sorted(words, key=lambda x: (-len(x), x.casefold()))
+        config["alerts"] = alerts_resp.data or {"provider":"none"}
 
     async def config_loop():
         nonlocal last_error
@@ -325,20 +367,18 @@ async def user_monitor_loop(account):
                     user_id, group_name, text, code, discount, message_link
                 )
 
-            alert = (
-                f"🚨 PALAVRA-CHAVE ENCONTRADA\n\n"
-                f"🔑 Palavra: {found}\n"
-                f"👥 Grupo: {group_name}\n"
-                f"👤 Usuário: {sender_name}\n\n"
-                f"💬 Mensagem:\n{text}"
-            )
-            if message_link:
-                alert += f"\n\n🔗 {message_link}"
-
             try:
-                await client.send_message("me", alert)
-            except Exception:
-                pass
+                await send_ntfy(
+                    config.get("alerts"),
+                    found,
+                    group_name,
+                    sender_name,
+                    text,
+                    message_link,
+                )
+            except Exception as exc:
+                last_error = f"ntfy: {exc}"
+                print(f"[NTFY] {user_id}: {exc}", flush=True)
         except Exception as exc:
             last_error = f"message: {exc}"
             traceback.print_exc()
