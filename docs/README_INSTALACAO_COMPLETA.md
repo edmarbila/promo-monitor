@@ -1,4 +1,4 @@
-# Instalação completa — Promo Monitor V2.1
+# Instalação completa — Promo Monitor V2.2
 
 Este guia leva uma instalação nova do zero até o mesmo desenho usado em produção: Supabase + frontend estático + Control API HTTPS + worker Python 24/7.
 
@@ -290,7 +290,7 @@ Esperado:
 ```text
 active
 active
-{"ok":true,"version":"2.1.0"}
+{"ok":true,"version":"2.2.0"}
 ```
 
 Logs:
@@ -370,7 +370,38 @@ Teste:
 curl https://<DOMINIO_API>/health
 ```
 
-## 11. Primeiro usuário
+## 11. Alertas ntfy
+
+Para uma instalação atualizada de uma versão anterior à 2.2, execute no Supabase:
+
+```text
+sql/upgrade_ntfy_alerts_v4.sql
+```
+
+Em uma instalação nova, `fresh_install.sql` já contém essa estrutura.
+
+Cada usuário recebe um tópico ntfy aleatório. No painel:
+
+1. abra **Telegram → Alertas no ntfy**;
+2. instale o aplicativo ntfy;
+3. copie o tópico mostrado;
+4. no ntfy, escolha **Inscrever-se em tópico**;
+5. cole o tópico;
+6. escolha a prioridade no Promo Monitor;
+7. clique em **Salvar**;
+8. clique em **Enviar teste**.
+
+A versão 2.2 não envia mais os matches para “Mensagens Salvas” do Telegram. O Telegram fica como fonte monitorada e o ntfy vira o destino do alerta.
+
+O serviço público usado pelo backend é:
+
+```text
+https://ntfy.sh
+```
+
+O nome do tópico deve ser tratado como segredo.
+
+## 12. Primeiro usuário
 
 1. Crie a conta.
 2. Confirme o e-mail se habilitado.
@@ -384,7 +415,7 @@ curl https://<DOMINIO_API>/health
 10. Aguarde **Conectado**.
 11. Cadastre palavras e grupos.
 
-## 12. Palavras-chave
+## 13. Palavras-chave
 
 A busca é case-insensitive.
 
@@ -396,7 +427,7 @@ bug
 
 são consideradas a mesma palavra no banco e na detecção.
 
-## 13. Lojas e cupons
+## 14. Lojas e cupons
 
 Na aba Lojas digite apenas o nome, por exemplo:
 
@@ -417,7 +448,7 @@ O botão **Cadastrar e buscar** faz a primeira consulta imediatamente. Em lojas 
 
 O worker repete consultas segundo `COUPON_SCAN_MINUTES`.
 
-## 14. Retenção
+## 15. Retenção
 
 ```text
 Ocorrências Telegram: 24h
@@ -430,13 +461,13 @@ Execução manual:
 select public.tg_cleanup_old_data();
 ```
 
-## 15. Recuperação de senha
+## 16. Recuperação de senha
 
 O usuário pode clicar **Esqueci minha senha**.
 
 O Supabase envia o link para a Redirect URL configurada. Ao retornar ao painel, o usuário define a nova senha. Usuários logados também podem trocar a senha na aba **Conta**.
 
-## 16. OCI Run Command opcional
+## 17. OCI Run Command opcional
 
 Se não quiser depender de SSH, habilite o plugin de Run Command da instância.
 
@@ -460,7 +491,7 @@ Instância → Gerenciamento → Execução de comando
 
 O Run Command pode executar como usuário de agente; use `sudo` quando necessário.
 
-## 17. Atualizar uma VM existente
+## 18. Atualizar uma VM existente
 
 ```bash
 cd /opt/promo-monitor
@@ -478,7 +509,7 @@ curl -fsS https://<DOMINIO_API>/health
 
 Quando uma atualização trouxer SQL novo, execute apenas a migração indicada no changelog/README. Não rode migrações antigas novamente sem necessidade.
 
-## 18. Backup antes de migrações
+## 19. Backup antes de migrações
 
 Antes de migração estrutural faça backup do Supabase/banco e dos arquivos da VM.
 
@@ -494,7 +525,7 @@ tokens
 backups com credenciais
 ```
 
-## 19. Checklist final
+## 20. Checklist final
 
 - frontend abre por HTTPS;
 - login funciona;
@@ -504,7 +535,8 @@ backups com credenciais
 - worker aparece online;
 - grupo pode ser cadastrado;
 - palavra pode ser cadastrada;
-- match chega;
+- match gera notificação no ntfy;
+- botão **Enviar teste** do ntfy funciona;
 - loja pode ser cadastrada;
 - **Buscar agora** funciona;
 - cupons exibem códigos quando a fonte os expõe;
