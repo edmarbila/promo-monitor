@@ -55,7 +55,7 @@ create table if not exists public.tg_coupon_sites (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   store_name text not null,
   store_slug text not null,
-  sources text[] not null default array['meliuz','cuponeria']::text[],
+  sources text[] not null default array['meliuz','cuponeria','picodi','promobit']::text[],
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -120,10 +120,10 @@ begin
   end if;
 end $$;
 
-update public.tg_keywords set user_id='REPLACE_WITH_OWNER_4e162ad5-7770-4507-9759-622825ab4e80'::uuid where user_id is null;
-update public.tg_groups set user_id='REPLACE_WITH_OWNER_4e162ad5-7770-4507-9759-622825ab4e80'::uuid where user_id is null;
-update public.tg_group_requests set user_id='REPLACE_WITH_OWNER_4e162ad5-7770-4507-9759-622825ab4e80'::uuid where user_id is null;
-update public.tg_occurrences set user_id='REPLACE_WITH_OWNER_4e162ad5-7770-4507-9759-622825ab4e80'::uuid where user_id is null;
+update public.tg_keywords set user_id='REPLACE_WITH_OWNER_UUID'::uuid where user_id is null;
+update public.tg_groups set user_id='REPLACE_WITH_OWNER_UUID'::uuid where user_id is null;
+update public.tg_group_requests set user_id='REPLACE_WITH_OWNER_UUID'::uuid where user_id is null;
+update public.tg_occurrences set user_id='REPLACE_WITH_OWNER_UUID'::uuid where user_id is null;
 
 alter table public.tg_keywords alter column user_id set not null;
 alter table public.tg_groups alter column user_id set not null;
