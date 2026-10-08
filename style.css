@@ -78,3 +78,26 @@ nav{display:grid;gap:6px}.nav{border:0;background:transparent;color:var(--muted)
  .mobile-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;z-index:100;left:0;right:0;bottom:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(7,15,27,.98);border-top:1px solid var(--line)}
  .mobile-nav .nav{text-align:center;padding:9px 2px;font-size:11px}
 }
+
+
+.modal-backdrop{
+  position:fixed;inset:0;z-index:1000;display:grid;place-items:center;
+  padding:20px;background:rgba(2,8,17,.78);backdrop-filter:blur(5px)
+}
+.setup-modal{
+  width:min(470px,100%);padding:26px;border:1px solid var(--line);
+  border-radius:22px;background:var(--panel);box-shadow:0 28px 80px rgba(0,0,0,.5);
+  text-align:center
+}
+.setup-modal-icon{
+  width:58px;height:58px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;
+  background:rgba(50,157,255,.14);border:1px solid rgba(50,157,255,.28);
+  font-size:27px
+}
+.setup-modal h3{margin:0 0 10px;font-size:23px}
+.setup-modal p{margin:7px 0;line-height:1.55}
+.setup-modal-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+@media(max-width:520px){
+  .setup-modal{padding:22px 17px}
+  .setup-modal-actions{display:grid}
+}
