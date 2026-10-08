@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import re
 import unicodedata
@@ -89,7 +91,7 @@ def _extract(source, store_name, url, html):
 async def fetch_store_coupons(source, store_name, store_slug, timeout=20):
     slug = slugify(store_slug or store_name)
     if source == "meliuz":
-        url = f"https://www.meliuz.com.br/cupom/{slug}"
+        url = f"https://www.meliuz.com.br/desconto/cupom-desconto-{slug}"
     elif source == "cuponeria":
         url = f"https://www.cuponeria.com.br/cupom-desconto/{slug}"
     else:
