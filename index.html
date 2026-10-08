@@ -16,7 +16,7 @@
     <h1>Promo Monitor</h1>
     <p>Telegram, alertas e cupons em um só painel.</p>
 
-    <div class="auth-tabs">
+    <div id="authTabs" class="auth-tabs">
       <button id="tabLogin" class="active">Entrar</button>
       <button id="tabSignup">Criar conta</button>
     </div>
@@ -24,6 +24,7 @@
     <form id="loginForm" class="stack">
       <label>E-mail<input id="loginEmail" type="email" required></label>
       <label>Senha<input id="loginPassword" type="password" required></label>
+      <button id="forgotPasswordBtn" type="button" class="text-button">Esqueci minha senha</button>
       <button class="btn primary">Entrar</button>
     </form>
 
@@ -33,6 +34,21 @@
       <label>Senha<input id="signupPassword" type="password" minlength="8" required></label>
       <button class="btn primary">Criar conta</button>
     </form>
+
+    <form id="recoveryForm" class="stack" hidden>
+      <p class="muted small-copy">Informe o e-mail da sua conta. Enviaremos um link para criar uma nova senha.</p>
+      <label>E-mail<input id="recoveryEmail" type="email" required></label>
+      <button class="btn primary">Enviar link de recuperação</button>
+      <button id="backToLoginBtn" type="button" class="btn ghost">Voltar para entrar</button>
+    </form>
+
+    <form id="resetPasswordForm" class="stack" hidden>
+      <p class="muted small-copy">Defina uma nova senha para sua conta.</p>
+      <label>Nova senha<input id="resetPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <label>Confirmar nova senha<input id="resetPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label>
+      <button class="btn primary">Salvar nova senha</button>
+    </form>
+
     <p id="authMessage" class="muted" hidden></p>
   </section>
 </main>
@@ -52,6 +68,7 @@
       <button class="nav" data-view="stores">Lojas</button>
       <button class="nav" data-view="history">Histórico 24h</button>
       <button class="nav" data-view="telegram">Telegram</button>
+      <button class="nav" data-view="account">Conta</button>
       <button class="nav" data-view="project">Projeto</button>
     </nav>
 
@@ -160,6 +177,20 @@
       </section>
     </section>
 
+    <section id="view-account" class="view">
+      <section class="panel">
+        <div class="panel-head">
+          <div><h3>Minha conta</h3><p>Altere a senha usada para entrar no Promo Monitor.</p></div>
+        </div>
+        <div class="account-email">E-mail: <strong id="accountEmail">—</strong></div>
+        <form id="changePasswordForm" class="stack account-form">
+          <label>Nova senha<input id="changePassword" type="password" minlength="8" autocomplete="new-password" required></label>
+          <label>Confirmar nova senha<input id="changePasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label>
+          <button class="btn primary">Alterar senha</button>
+        </form>
+      </section>
+    </section>
+
     <section id="view-project" class="view">
       <section class="panel prose">
         <h3>Como o projeto funciona</h3>
@@ -175,6 +206,7 @@
     <button class="nav" data-view="groups">Grupos</button>
     <button class="nav" data-view="coupons">Cupons</button>
     <button class="nav" data-view="telegram">Telegram</button>
+    <button class="nav" data-view="account">Conta</button>
   </nav>
 </div>
 
