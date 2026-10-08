@@ -1,4 +1,6 @@
+import asyncio
 import os
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -13,6 +15,7 @@ from telethon.sessions import StringSession
 
 from auth_utils import current_user_id
 from crypto_utils import encrypt_text, decrypt_text
+from coupon_sources import fetch_store_coupons, coupon_key
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
@@ -24,7 +27,7 @@ origins = [
     if x.strip()
 ]
 
-app = FastAPI(title="Promo Monitor Control API", version="2.0.0")
+app = FastAPI(title="Promo Monitor Control API", version="2.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -43,6 +46,9 @@ class ConfirmCodeBody(BaseModel):
 
 class Confirm2FABody(BaseModel):
     password: str = Field(min_length=1, max_length=256)
+
+class ScanStoreBody(BaseModel):
+    store_id: int
 
 def hint(phone):
     digits = "".join(c for c in phone if c.isdigit())
@@ -70,7 +76,76 @@ def get_private(user_id):
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "version": "2.0.0"}
+    return {"ok": True, "version": "2.1.0"}
+
+@app.post("/coupons/scan")
+async def scan_store_coupons(body: ScanStoreBody, user_id: str = Depends(current_user_id)):
+    site = (
+        db.table("tg_coupon_sites")
+        .select("*")
+        .eq("id", body.store_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if not site:
+        raise HTTPException(status_code=404, detail="Loja não encontrada.")
+
+    sources = site.get("sources") or ["meliuz", "cuponeria", "picodi", "promobit"]
+    sources = list(dict.fromkeys(sources))
+    now = datetime.now(timezone.utc).isoformat()
+
+    async def scan_source(source):
+        try:
+            results = await fetch_store_coupons(
+                source=source,
+                store_name=site["store_name"],
+                store_slug=site["store_slug"],
+                timeout=float(os.environ.get("COUPON_HTTP_TIMEOUT", "20")),
+            )
+
+            db.table("tg_coupons").update({"active": False}) \
+                .eq("user_id", user_id) \
+                .eq("source", source) \
+                .eq("store_name", site["store_name"]) \
+                .execute()
+
+            saved = 0
+            for item in results:
+                if not item.code:
+                    continue
+                payload = {
+                    "user_id": user_id,
+                    "coupon_key": coupon_key(item.source, item.store_name, item.title, item.code),
+                    "source": item.source,
+                    "store_name": item.store_name,
+                    "title": item.title,
+                    "code": item.code,
+                    "discount_text": item.discount_text,
+                    "details": item.details,
+                    "source_url": item.source_url,
+                    "active": True,
+                    "last_seen_at": now,
+                }
+                db.table("tg_coupons").upsert(
+                    payload, on_conflict="user_id,coupon_key"
+                ).execute()
+                saved += 1
+
+            return {"source": source, "saved": saved, "error": None}
+        except Exception as exc:
+            return {"source": source, "saved": 0, "error": str(exc)[:500]}
+
+    results = await asyncio.gather(*(scan_source(source) for source in sources))
+    total = sum(item["saved"] for item in results)
+    return {
+        "ok": True,
+        "store": site["store_name"],
+        "total": total,
+        "sources": results,
+    }
+
 
 @app.get("/telegram/status")
 async def telegram_status(user_id: str = Depends(current_user_id)):
