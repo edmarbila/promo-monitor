@@ -6,7 +6,7 @@ A partir da versão 2.2, o Telegram continua sendo a **fonte das mensagens monit
 
 1. Instale o aplicativo ntfy no celular.
 2. Entre no Promo Monitor.
-3. Abra **Telegram → Alertas no ntfy**.
+3. Abra **Configurar Conexão → Alertas no ntfy**.
 4. Copie o tópico mostrado no painel.
 5. No ntfy, escolha **Inscrever-se em tópico** e cole o tópico.
 6. No Promo Monitor, deixe **Ativar alertas pelo ntfy** marcado.
@@ -16,15 +16,41 @@ A partir da versão 2.2, o Telegram continua sendo a **fonte das mensagens monit
 
 ## Tópico
 
-Cada usuário recebe automaticamente um tópico longo e aleatório, parecido com:
+Cada usuário recebe automaticamente um tópico aleatório, mas pode escolher entre dois modos:
+
+### Automático
+
+O sistema gera um tópico seguro, por exemplo:
 
 ```text
-promo-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+promo-k4g7x2m9q8v1c6p3d5f0...
 ```
 
-No serviço público ntfy.sh, o tópico deve ser tratado como uma senha: quem souber o nome consegue tentar assinar o tópico. Não publique o tópico em repositórios, grupos ou capturas de tela.
+O botão **Gerar outro automático** cria um novo nome.
 
-O botão **Gerar novo tópico** permite trocar o endereço. Depois de gerar um novo, salve e assine o novo tópico no aplicativo.
+### Personalizado
+
+O usuário informa uma base fácil de reconhecer. A base precisa conter pelo menos **uma letra e um número**.
+
+Exemplo informado:
+
+```text
+promocao 001
+```
+
+O sistema converte espaços/símbolos em hífens e acrescenta uma sequência aleatória de segurança:
+
+```text
+promocao-001-k7m4q2x9ab
+```
+
+Antes de salvar, o painel mostra a **prévia do tópico final**.
+
+Se o usuário digitar apenas `promocao`, o painel bloqueia o salvamento e informa que também é necessário um número.
+
+No serviço público ntfy.sh, o tópico deve ser tratado como uma senha. Não publique o nome completo em repositórios, grupos ou capturas de tela.
+
+No aplicativo ntfy, use **exatamente o mesmo tópico final** mostrado no Promo Monitor. Se alterar o tópico no painel, atualize também a inscrição no aplicativo.
 
 ## Prioridade
 
