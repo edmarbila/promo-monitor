@@ -58,7 +58,10 @@ nav{display:grid;gap:6px}.nav{border:0;background:transparent;color:var(--muted)
 .inactive-btn{background:rgba(247,198,92,.1);color:#ffe2a0;border:1px solid rgba(247,198,92,.25)}
 .occurrence-top,.coupon-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.meta{color:var(--muted);font-size:12px;margin-top:5px}
 .message,.coupon-title{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin:9px 0 0}.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:850;background:rgba(50,157,255,.12);color:#a1d3ff;border:1px solid rgba(50,157,255,.22)}
-.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:900;font-size:16px;margin:10px 0}.link{color:#91ccff;text-decoration:none;font-size:12px;font-weight:800}
+.coupon-details{color:var(--muted);font-size:13px;line-height:1.5;margin:8px 0 0}
+.code{display:flex;align-items:center;gap:10px;width:max-content;max-width:100%;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;margin:12px 0 2px;padding:9px 11px;border:1px dashed rgba(50,157,255,.4);border-radius:10px;background:rgba(50,157,255,.08)}
+.code span{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.code strong{font-size:16px;overflow-wrap:anywhere}.link{color:#91ccff;text-decoration:none;font-size:12px;font-weight:800}
 .request.pending{border-left:3px solid var(--warning)}.request.resolved{border-left:3px solid var(--success)}.request.error{border-left:3px solid var(--danger)}
 .empty{color:var(--muted);padding:18px 2px}
 .guide{background:#081422;border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:17px}.guide h4{margin:0 0 8px}.guide p,.guide li{color:var(--muted);font-size:13px;line-height:1.55}
