@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import httpx
 import os
 import re
 import traceback
@@ -15,14 +14,22 @@ from telethon.sessions import StringSession
 
 from crypto_utils import decrypt_text
 from coupon_sources import fetch_store_coupons, coupon_key
+from ntfy_utils import (
+    claim_notification,
+    coupon_dedupe_key,
+    product_dedupe_key,
+    publish_ntfy,
+)
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 CONFIG_REFRESH_SECONDS = 10
 ACCOUNT_SYNC_SECONDS = 20
 GROUP_REQUEST_SECONDS = 5
 HEARTBEAT_SECONDS = 20
 COUPON_SCAN_MINUTES = int(os.environ.get("COUPON_SCAN_MINUTES", "30"))
 COUPON_HTTP_TIMEOUT = float(os.environ.get("COUPON_HTTP_TIMEOUT", "20"))
+PRODUCT_DEDUPE_HOURS = int(os.environ.get("PRODUCT_DEDUPE_HOURS", "24"))
+COUPON_DEDUPE_HOURS = int(os.environ.get("COUPON_DEDUPE_HOURS", "48"))
 
 db = create_client(
     os.environ["SUPABASE_URL"].strip(),
@@ -31,16 +38,25 @@ db = create_client(
 
 running_tasks = {}
 
-async def send_ntfy(settings, keyword, group_name, sender_name, message, message_link=""):
+async def send_product_alert(user_id, settings, keyword, group_name, sender_name, message, message_link=""):
     if not settings or settings.get("provider") != "ntfy":
-        return
+        return False
 
     topic = str(settings.get("ntfy_topic") or "").strip()
     if not topic:
-        return
+        return False
 
-    priority = int(settings.get("ntfy_priority") or 5)
-    priority = min(5, max(1, priority))
+    key = product_dedupe_key(keyword, message)
+    claimed = await claim_notification(
+        db,
+        user_id,
+        key,
+        "product",
+        topic,
+        PRODUCT_DEDUPE_HOURS,
+    )
+    if not claimed:
+        return False
 
     body = (
         f"Palavra: {keyword}\n"
@@ -51,18 +67,56 @@ async def send_ntfy(settings, keyword, group_name, sender_name, message, message
     if message_link:
         body += f"\n\nAbrir mensagem: {message_link}"
 
-    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as http:
-        response = await http.post(
-            f"https://ntfy.sh/{topic}",
-            content=body.encode("utf-8"),
-            headers={
-                "Title": "Promo Monitor - Alerta",
-                "Priority": str(priority),
-                "Tags": "rotating_light",
-                "Content-Type": "text/plain; charset=utf-8",
-            },
-        )
-        response.raise_for_status()
+    await publish_ntfy(
+        topic,
+        f"Produto encontrado: {keyword}",
+        body,
+        priority=settings.get("ntfy_priority") or 5,
+        tags="package",
+    )
+    return True
+
+
+async def send_coupon_alert(site, item):
+    topic = str(site.get("ntfy_topic") or "").strip()
+    code = str(item.code or "").strip()
+    if not topic or not code:
+        return False
+
+    key = coupon_dedupe_key(site.get("store_name") or item.store_name, code)
+    claimed = await claim_notification(
+        db,
+        site["user_id"],
+        key,
+        "coupon",
+        topic,
+        COUPON_DEDUPE_HOURS,
+    )
+    if not claimed:
+        return False
+
+    parts = [
+        f"Loja: {site.get('store_name') or item.store_name}",
+        f"Codigo: {code}",
+    ]
+    if item.discount_text:
+        parts.append(f"Desconto: {item.discount_text}")
+    if item.title:
+        parts.append(f"Oferta: {item.title}")
+    if item.details:
+        parts.append(f"Detalhes: {item.details}")
+    parts.append(f"Fonte: {item.source}")
+    if item.source_url:
+        parts.append(f"Abrir fonte: {item.source_url}")
+
+    await publish_ntfy(
+        topic,
+        f"Cupom {site.get('store_name') or item.store_name}",
+        "\n".join(parts),
+        priority=4,
+        tags="ticket",
+    )
+    return True
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
@@ -368,7 +422,8 @@ async def user_monitor_loop(account):
                 )
 
             try:
-                await send_ntfy(
+                await send_product_alert(
+                    user_id,
                     config.get("alerts"),
                     found,
                     group_name,
@@ -377,8 +432,8 @@ async def user_monitor_loop(account):
                     message_link,
                 )
             except Exception as exc:
-                last_error = f"ntfy: {exc}"
-                print(f"[NTFY] {user_id}: {exc}", flush=True)
+                last_error = f"ntfy-produtos: {exc}"
+                print(f"[NTFY PRODUTOS] {user_id}: {exc}", flush=True)
         except Exception as exc:
             last_error = f"message: {exc}"
             traceback.print_exc()
@@ -480,6 +535,13 @@ async def coupon_scan_once():
                         .upsert(payload, on_conflict="user_id,coupon_key")
                         .execute()
                     )
+                    try:
+                        await send_coupon_alert(site, item)
+                    except Exception as exc:
+                        print(
+                            f"[NTFY CUPOM] {site['store_name']} / {source}: {exc}",
+                            flush=True,
+                        )
             except Exception as exc:
                 print(f"[CUPOM] {site['store_name']} / {source}: {exc}", flush=True)
 
