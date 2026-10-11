@@ -131,3 +131,5 @@ nav{display:grid;gap:6px}.nav{border:0;background:transparent;color:var(--muted)
 @media(max-width:720px){
   .topic-mode{display:grid;gap:10px}
 }
+
+.store-channel{margin-top:7px!important;color:#a1d3ff!important;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px!important;overflow-wrap:anywhere}
