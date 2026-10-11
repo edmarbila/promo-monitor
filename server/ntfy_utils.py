@@ -40,8 +40,19 @@ def product_dedupe_key(keyword, message):
 
 
 def coupon_dedupe_key(store_name, code):
-    raw = f"coupon|{_slug(store_name)}|{str(code or '').upper().strip()}"
+    store = re.sub(r"\s+", " ", str(store_name or "").casefold()).strip()
+    raw = f"coupon|{store}|{str(code or '').upper().strip()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+async def release_notification(db, user_id, dedupe_key):
+    await asyncio.to_thread(
+        lambda: db.table("tg_notification_log")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("dedupe_key", dedupe_key)
+        .execute()
+    )
 
 
 async def claim_notification(db, user_id, dedupe_key, kind, topic, ttl_hours):
