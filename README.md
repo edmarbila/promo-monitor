@@ -1,4 +1,4 @@
-# Promo Monitor V2.2
+# Promo Monitor V2.3
 
 Monitor multiusuário de palavras-chave do Telegram com painel web, worker 24/7 e central de códigos de cupom.
 
@@ -14,6 +14,8 @@ O projeto usa **Supabase Auth + PostgreSQL/RLS**, **Telethon**, **FastAPI**, um 
 - Grupos e palavras isolados por usuário com RLS.
 - Worker continua monitorando mesmo com PC e navegador desligados.
 - Alertas dos matches enviados pelo **ntfy**, em aplicativo separado do Telegram.
+- Canal **Produtos** para palavras encontradas e um canal ntfy separado para cada loja de cupons.
+- Filtro persistente de repetidos: produtos por 24h e cupons `loja + código` por 48h.
 - Histórico de ocorrências com retenção de 24 horas.
 - Central de cupons com código, desconto, descrição/regra e origem quando disponíveis.
 - Motores de cupons: Telegram, Méliuz, Cuponeria, Picodi e Promobit.
@@ -69,6 +71,7 @@ O tutorial completo, incluindo Oracle Cloud, DuckDNS, Caddy, systemd, firewall, 
 - `sql/upgrade_v1_to_v2.sql`: migração de instalação antiga V1.
 - `sql/upgrade_coupon_sources_v3.sql`: atualização de instalações V2 antigas para múltiplas fontes + retenção de cupons em 48h.
 - `sql/upgrade_ntfy_alerts_v4.sql`: adiciona alertas ntfy em instalações já existentes.
+- `sql/upgrade_ntfy_channels_v5.sql`: separa Produtos/cupons por loja e adiciona deduplicação persistente.
 - `sql/README.md`: ordem correta para cada cenário.
 
 Para projeto novo, não execute migrações antigas: use apenas `fresh_install.sql`.
@@ -214,6 +217,24 @@ promo-monitor/
 ├── README.md
 └── LICENSE
 ```
+
+## Canais ntfy
+
+A versão 2.3 separa os alertas:
+
+- **Produtos**: recebe palavras encontradas nos grupos Telegram, como `BUG`, `notebook`, etc.
+- **Mercado Livre**: recebe apenas cupons da loja Mercado Livre.
+- **Shopee**: recebe apenas cupons da Shopee.
+- cada nova loja cadastrada recebe automaticamente seu próprio tópico ntfy.
+
+O ntfy permite assinar vários tópicos no mesmo aplicativo. Todos usam o servidor padrão `ntfy.sh`.
+
+### Filtro de repetidos
+
+- Produto: a mesma mensagem normalizada + palavra-chave é notificada apenas uma vez por 24 horas, inclusive se for repostada em outro grupo.
+- Cupom: o mesmo `loja + código` é notificado apenas uma vez por 48 horas, mesmo quando Méliuz, Picodi, Cuponeria ou Promobit encontrarem o mesmo código.
+
+O histórico no Supabase continua sendo registrado; o filtro atua no envio de notificações.
 
 ## Alertas ntfy
 
