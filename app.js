@@ -399,9 +399,17 @@
       if($("sourcePromobit").checked)sources.push("promobit");
       if(!sources.length)throw new Error("Selecione pelo menos uma fonte.");
       const slug=slugify(name);
+      const storeTopic=`${slug.slice(0,48)||"cupons"}-${randomChars(10)}`;
       const {data,error}=await db.from("tg_coupon_sites")
-        .insert({user_id:state.user.id,store_name:name,store_slug:slug,sources,active:true})
-        .select("id").single();
+        .insert({
+          user_id:state.user.id,
+          store_name:name,
+          store_slug:slug,
+          sources,
+          ntfy_topic:storeTopic,
+          active:true
+        })
+        .select("id,ntfy_topic").single();
       if(error)throw error;
       $("storeName").value="";
       await loadStores();
@@ -426,9 +434,27 @@
     for(const x of state.stores){
       const row=document.createElement("div");row.className="item";
       const main=document.createElement("div");const s=document.createElement("strong");s.textContent=x.store_name;
-      const sub=document.createElement("span");sub.textContent=`${x.store_slug} • ${(x.sources||[]).join(" + ")} • ${x.active?"ativa":"pausada"}`;main.append(s,sub);
+      const sub=document.createElement("span");sub.textContent=`${x.store_slug} • ${(x.sources||[]).join(" + ")} • ${x.active?"ativa":"pausada"}`;
+      const channel=document.createElement("span");channel.className="store-channel";channel.textContent=x.ntfy_topic
+        ? `Canal ntfy: ${x.ntfy_topic}`
+        : "Canal ntfy: execute a migração V5";
+      main.append(s,sub,channel);
       const actions=document.createElement("div");actions.className="actions";
       actions.append(
+        btn("Copiar canal","btn mini secondary",async()=>{
+          if(!x.ntfy_topic)return notify("Canal ntfy ainda não configurado para esta loja.","error");
+          try{
+            await navigator.clipboard.writeText(x.ntfy_topic);
+            notify(`Canal de ${x.store_name} copiado.`,"success");
+          }catch(e){fail(e);}
+        }),
+        btn("Testar canal","btn mini active-btn",async()=>{
+          if(!x.ntfy_topic)return notify("Canal ntfy ainda não configurado para esta loja.","error");
+          try{
+            await api("/alerts/ntfy/test-store",{method:"POST",body:JSON.stringify({store_id:x.id})});
+            notify(`Teste enviado para o canal de ${x.store_name}.`,"success");
+          }catch(e){fail(e);}
+        }),
         btn("Buscar agora","btn mini secondary",async()=>{
           try{
             notify(`Buscando cupons de ${x.store_name}...`);
