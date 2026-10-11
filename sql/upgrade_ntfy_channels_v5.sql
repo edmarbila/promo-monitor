@@ -58,7 +58,7 @@ select
   encode(
     digest(
       'coupon|' ||
-      lower(regexp_replace(btrim(c.store_name), '\\s+', ' ', 'g')) ||
+      lower(regexp_replace(btrim(c.store_name), '[[:space:]]+', ' ', 'g')) ||
       '|' ||
       upper(btrim(c.code)),
       'sha256'
