@@ -53,7 +53,20 @@ Redirect URLs:
 https://<USUARIO>.github.io/<REPOSITORIO>/
 ```
 
-Isso é necessário para recuperação de senha.
+Isso é necessário para **confirmação de cadastro e recuperação de senha**.
+
+O frontend envia explicitamente `emailRedirectTo` no cadastro e no reenvio de confirmação. Portanto, a URL de produção precisa estar na lista de Redirect URLs do Supabase.
+
+### Fluxo esperado de cadastro
+
+1. Usuário informa nome, e-mail e senha.
+2. O Supabase cria a conta e, com confirmação de e-mail habilitada, retorna usuário sem sessão.
+3. O painel informa claramente que o e-mail de confirmação foi enviado.
+4. O usuário clica no link recebido.
+5. O Supabase valida o token e redireciona de volta ao frontend.
+6. O painel mostra **E-mail confirmado com sucesso** e libera a conta.
+7. Se o e-mail não chegar, o usuário pode clicar **Reenviar e-mail de confirmação**.
+8. Se ocorrer `Failed to fetch`, o painel informa que houve falha de conexão e orienta o usuário a verificar se o e-mail chegou antes de repetir o cadastro.
 
 ## 3. Clonar o projeto localmente
 
