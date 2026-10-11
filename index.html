@@ -129,7 +129,7 @@
 
     <section id="view-stores" class="view">
       <section class="panel">
-        <div class="panel-head"><div><h3>Lojas de interesse</h3><p>O worker consulta as fontes periodicamente.</p></div></div>
+        <div class="panel-head"><div><h3>Lojas de interesse</h3><p>Cada loja recebe um canal ntfy próprio para cupons. Ex.: Mercado Livre e Shopee ficam separados.</p></div></div>
         <form id="storeForm" class="store-form">
           <input id="storeName" placeholder="Nome da loja — Ex.: Shopee, Amazon, KaBuM" required>
           <div class="source-options">
@@ -181,8 +181,8 @@
         <div class="ntfy-box">
           <div class="panel-head">
             <div>
-              <h3>Alertas no ntfy</h3>
-              <p>Receba os matches em um aplicativo separado, sem poluir suas Mensagens Salvas do Telegram.</p>
+              <h3>Canal Produtos no ntfy</h3>
+              <p>Este canal recebe somente palavras encontradas nos grupos, como BUG, notebook ou outras palavras cadastradas.</p>
             </div>
             <span id="ntfyPill" class="pill">Verificando...</span>
           </div>
@@ -220,7 +220,7 @@
               </div>
             </div>
 
-            <label class="ntfy-final-topic">Tópico final no ntfy
+            <label class="ntfy-final-topic">Tópico do canal Produtos no ntfy
               <input id="ntfyTopic" type="text" readonly>
             </label>
 
@@ -233,7 +233,7 @@
             </label>
 
             <p class="ntfy-create-note">
-              No aplicativo ntfy, mantenha o servidor padrão <strong>ntfy.sh</strong> e inscreva-se em um tópico com <strong>exatamente este mesmo nome</strong>. Se gerar ou salvar outro nome aqui, atualize também a inscrição no ntfy. O botão <strong>Enviar teste</strong> usa somente o tópico já salvo e nunca cria outro.
+              No aplicativo ntfy, mantenha o servidor padrão <strong>ntfy.sh</strong> e inscreva-se neste tópico como seu canal <strong>Produtos</strong>. Os canais de cupons de cada loja aparecem na tela <strong>Lojas</strong>. O botão <strong>Enviar teste</strong> usa somente o tópico já salvo e nunca cria outro.
             </p>
 
             <div class="actions ntfy-actions">
