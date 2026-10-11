@@ -19,6 +19,7 @@ from ntfy_utils import (
     coupon_dedupe_key,
     product_dedupe_key,
     publish_ntfy,
+    release_notification,
 )
 
 VERSION = "2.3.0"
@@ -67,13 +68,17 @@ async def send_product_alert(user_id, settings, keyword, group_name, sender_name
     if message_link:
         body += f"\n\nAbrir mensagem: {message_link}"
 
-    await publish_ntfy(
-        topic,
-        f"Produto encontrado: {keyword}",
-        body,
-        priority=settings.get("ntfy_priority") or 5,
-        tags="package",
-    )
+    try:
+        await publish_ntfy(
+            topic,
+            f"Produto encontrado: {keyword}",
+            body,
+            priority=settings.get("ntfy_priority") or 5,
+            tags="package",
+        )
+    except Exception:
+        await release_notification(db, user_id, key)
+        raise
     return True
 
 
@@ -109,13 +114,17 @@ async def send_coupon_alert(site, item):
     if item.source_url:
         parts.append(f"Abrir fonte: {item.source_url}")
 
-    await publish_ntfy(
-        topic,
-        f"Cupom {site.get('store_name') or item.store_name}",
-        "\n".join(parts),
-        priority=4,
-        tags="ticket",
-    )
+    try:
+        await publish_ntfy(
+            topic,
+            f"Cupom {site.get('store_name') or item.store_name}",
+            "\n".join(parts),
+            priority=4,
+            tags="ticket",
+        )
+    except Exception:
+        await release_notification(db, site["user_id"], key)
+        raise
     return True
 
 def now_iso():
