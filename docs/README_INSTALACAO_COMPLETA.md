@@ -1,4 +1,4 @@
-# Instalação completa — Promo Monitor V2.2
+# Instalação completa — Promo Monitor V2.3
 
 Este guia leva uma instalação nova do zero até o mesmo desenho usado em produção: Supabase + frontend estático + Control API HTTPS + worker Python 24/7.
 
@@ -544,3 +544,29 @@ backups com credenciais
 - API e worker estão enabled/active;
 - CORS aceita somente seus frontends;
 - service role e Fernet key nunca estão no frontend/Git.
+
+
+## Atualização V2.3 — canais separados e deduplicação
+
+Para uma instalação que já estava funcionando, execute no Supabase:
+
+```text
+sql/upgrade_ntfy_channels_v5.sql
+```
+
+Depois atualize na VM os arquivos:
+
+```text
+server/multi_user_worker.py
+server/control_api.py
+server/ntfy_utils.py
+```
+
+No `server/.env`, os valores abaixo são opcionais; se ausentes, os padrões são usados:
+
+```env
+PRODUCT_DEDUPE_HOURS=24
+COUPON_DEDUPE_HOURS=48
+```
+
+Reinicie API e worker e confirme `/health` na versão 2.3.0.
