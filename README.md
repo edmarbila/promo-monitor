@@ -6,7 +6,8 @@ O projeto usa **Supabase Auth + PostgreSQL/RLS**, **Telethon**, **FastAPI**, um 
 
 ## O que já está pronto
 
-- Cadastro, login, recuperação e troca de senha pelo Supabase Auth.
+- Cadastro, confirmação de e-mail, reenvio de confirmação, login, recuperação e troca de senha pelo Supabase Auth.
+- O cadastro define explicitamente o retorno para o frontend e trata falhas de rede como `Failed to fetch` com orientação clara ao usuário.
 - Popup de primeiro acesso orientando o usuário a configurar o Telegram.
 - Cada usuário conecta a própria conta Telegram pelo painel.
 - API ID, API Hash, telefone e StringSession ficam no backend; dados sensíveis são criptografados.
