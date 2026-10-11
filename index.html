@@ -49,7 +49,11 @@
       <button class="btn primary">Salvar nova senha</button>
     </form>
 
-    <p id="authMessage" class="muted" hidden></p>
+    <p id="authMessage" class="muted auth-feedback" hidden></p>
+    <div id="confirmationActions" class="confirmation-actions" hidden>
+      <button id="resendConfirmationBtn" type="button" class="btn secondary">Reenviar e-mail de confirmação</button>
+      <button id="confirmationBackToLoginBtn" type="button" class="btn ghost">Ir para entrar</button>
+    </div>
   </section>
 </main>
 
