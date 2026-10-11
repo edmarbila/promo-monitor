@@ -16,7 +16,12 @@ from telethon.sessions import StringSession
 from auth_utils import current_user_id
 from crypto_utils import encrypt_text, decrypt_text
 from coupon_sources import fetch_store_coupons, coupon_key
-from ntfy_utils import claim_notification, coupon_dedupe_key, publish_ntfy
+from ntfy_utils import (
+    claim_notification,
+    coupon_dedupe_key,
+    publish_ntfy,
+    release_notification,
+)
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
@@ -108,13 +113,17 @@ async def send_coupon_alert(site, item):
     if item.source_url:
         parts.append(f"Abrir fonte: {item.source_url}")
 
-    await publish_ntfy(
-        topic,
-        f"Cupom {site.get('store_name') or item.store_name}",
-        "\n".join(parts),
-        priority=4,
-        tags="ticket",
-    )
+    try:
+        await publish_ntfy(
+            topic,
+            f"Cupom {site.get('store_name') or item.store_name}",
+            "\n".join(parts),
+            priority=4,
+            tags="ticket",
+        )
+    except Exception:
+        await release_notification(db, site["user_id"], key)
+        raise
     return True
 
 @app.get("/health")
