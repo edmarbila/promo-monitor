@@ -133,3 +133,10 @@ nav{display:grid;gap:6px}.nav{border:0;background:transparent;color:var(--muted)
 }
 
 .store-channel{margin-top:7px!important;color:#a1d3ff!important;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px!important;overflow-wrap:anywhere}
+
+.auth-feedback{margin:14px 0 0;padding:11px 12px;border-radius:11px;line-height:1.45}
+.auth-feedback.success{color:#adf0d2;background:rgba(59,215,154,.08);border:1px solid rgba(59,215,154,.25)}
+.auth-feedback.error{color:#ffb0bd;background:rgba(255,102,124,.08);border:1px solid rgba(255,102,124,.25)}
+.auth-feedback.info{color:#b9d9f7;background:rgba(50,157,255,.08);border:1px solid rgba(50,157,255,.22)}
+.confirmation-actions{display:grid;gap:8px;margin-top:10px}
+button:disabled{opacity:.58;cursor:not-allowed}
