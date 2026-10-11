@@ -1,5 +1,4 @@
 import asyncio
-import httpx
 import os
 from datetime import datetime, timezone
 
@@ -17,10 +16,12 @@ from telethon.sessions import StringSession
 from auth_utils import current_user_id
 from crypto_utils import encrypt_text, decrypt_text
 from coupon_sources import fetch_store_coupons, coupon_key
+from ntfy_utils import claim_notification, coupon_dedupe_key, publish_ntfy
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip()
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
 db = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+COUPON_DEDUPE_HOURS = int(os.environ.get("COUPON_DEDUPE_HOURS", "48"))
 
 origins = [
     x.strip()
@@ -28,7 +29,7 @@ origins = [
     if x.strip()
 ]
 
-app = FastAPI(title="Promo Monitor Control API", version="2.2.0")
+app = FastAPI(title="Promo Monitor Control API", version="2.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -75,9 +76,50 @@ def get_private(user_id):
         .data
     )
 
+async def send_coupon_alert(site, item):
+    topic = str(site.get("ntfy_topic") or "").strip()
+    code = str(item.code or "").strip()
+    if not topic or not code:
+        return False
+
+    key = coupon_dedupe_key(site.get("store_name") or item.store_name, code)
+    claimed = await claim_notification(
+        db,
+        site["user_id"],
+        key,
+        "coupon",
+        topic,
+        COUPON_DEDUPE_HOURS,
+    )
+    if not claimed:
+        return False
+
+    parts = [
+        f"Loja: {site.get('store_name') or item.store_name}",
+        f"Codigo: {code}",
+    ]
+    if item.discount_text:
+        parts.append(f"Desconto: {item.discount_text}")
+    if item.title:
+        parts.append(f"Oferta: {item.title}")
+    if item.details:
+        parts.append(f"Detalhes: {item.details}")
+    parts.append(f"Fonte: {item.source}")
+    if item.source_url:
+        parts.append(f"Abrir fonte: {item.source_url}")
+
+    await publish_ntfy(
+        topic,
+        f"Cupom {site.get('store_name') or item.store_name}",
+        "\n".join(parts),
+        priority=4,
+        tags="ticket",
+    )
+    return True
+
 @app.get("/health")
 async def health():
-    return {"ok": True, "version": "2.2.0"}
+    return {"ok": True, "version": "2.3.0"}
 
 @app.post("/coupons/scan")
 async def scan_store_coupons(body: ScanStoreBody, user_id: str = Depends(current_user_id)):
@@ -133,6 +175,10 @@ async def scan_store_coupons(body: ScanStoreBody, user_id: str = Depends(current
                     payload, on_conflict="user_id,coupon_key"
                 ).execute()
                 saved += 1
+                try:
+                    await send_coupon_alert(site, item)
+                except Exception:
+                    pass
 
             return {"source": source, "saved": saved, "error": None}
         except Exception as exc:
@@ -163,27 +209,52 @@ async def test_ntfy_alert(user_id: str = Depends(current_user_id)):
 
     topic = str(settings.get("ntfy_topic") or "").strip()
     if not topic:
-        raise HTTPException(status_code=400, detail="Tópico ntfy não configurado.")
-
-    priority = min(5, max(1, int(settings.get("ntfy_priority") or 5)))
+        raise HTTPException(status_code=400, detail="Canal Produtos não configurado.")
 
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as http:
-            response = await http.post(
-                f"https://ntfy.sh/{topic}",
-                content="Teste do Promo Monitor. Se esta mensagem chegou, os alertas ntfy estão configurados.".encode("utf-8"),
-                headers={
-                    "Title": "Promo Monitor - Teste",
-                    "Priority": str(priority),
-                    "Tags": "white_check_mark",
-                    "Content-Type": "text/plain; charset=utf-8",
-                },
-            )
-            response.raise_for_status()
+        await publish_ntfy(
+            topic,
+            "Promo Monitor - Teste Produtos",
+            "Teste do canal Produtos. Palavras encontradas serão enviadas para este tópico.",
+            priority=settings.get("ntfy_priority") or 5,
+            tags="white_check_mark,package",
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Falha ao enviar para ntfy: {exc}")
 
     return {"ok": True, "topic": topic}
+
+
+@app.post("/alerts/ntfy/test-store")
+async def test_store_ntfy(body: ScanStoreBody, user_id: str = Depends(current_user_id)):
+    site = (
+        db.table("tg_coupon_sites")
+        .select("id,store_name,ntfy_topic")
+        .eq("id", body.store_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if not site:
+        raise HTTPException(status_code=404, detail="Loja não encontrada.")
+
+    topic = str(site.get("ntfy_topic") or "").strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="Canal ntfy da loja não configurado.")
+
+    try:
+        await publish_ntfy(
+            topic,
+            f"Teste {site['store_name']}",
+            f"Teste do canal de cupons da loja {site['store_name']}.",
+            priority=4,
+            tags="white_check_mark,ticket",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar para ntfy: {exc}")
+
+    return {"ok": True, "topic": topic, "store": site["store_name"]}
 
 
 @app.get("/telegram/status")
