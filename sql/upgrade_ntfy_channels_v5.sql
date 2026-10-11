@@ -48,6 +48,36 @@ create table if not exists public.tg_notification_log (
 create index if not exists tg_notification_log_expiry_idx
   on public.tg_notification_log(expires_at);
 
+-- Evita uma enxurrada ao atualizar: cupons que já estavam ativos
+-- são considerados já conhecidos por mais 48 horas.
+insert into public.tg_notification_log(
+  user_id, dedupe_key, kind, topic, sent_at, expires_at
+)
+select
+  c.user_id,
+  encode(
+    digest(
+      'coupon|' ||
+      lower(regexp_replace(btrim(c.store_name), '\\s+', ' ', 'g')) ||
+      '|' ||
+      upper(btrim(c.code)),
+      'sha256'
+    ),
+    'hex'
+  ),
+  'coupon',
+  s.ntfy_topic,
+  now(),
+  now() + interval '48 hours'
+from public.tg_coupons c
+join public.tg_coupon_sites s
+  on s.user_id = c.user_id
+ and lower(btrim(s.store_name)) = lower(btrim(c.store_name))
+where c.active = true
+  and c.code is not null
+  and btrim(c.code) <> ''
+on conflict (user_id, dedupe_key) do nothing;
+
 alter table public.tg_notification_log enable row level security;
 revoke all on public.tg_notification_log from anon, authenticated;
 
