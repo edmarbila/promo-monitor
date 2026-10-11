@@ -37,6 +37,16 @@ upgrade_ntfy_alerts_v4.sql
 
 Esse SQL cria um tópico ntfy aleatório por usuário, habilita RLS e deixa o ntfy como destino padrão.
 
+## Atualização para canais ntfy separados e filtro de repetidos
+
+Em uma instalação já existente, execute:
+
+```text
+upgrade_ntfy_channels_v5.sql
+```
+
+Esse SQL adiciona um tópico ntfy por loja, cria o registro persistente de notificações enviadas e a função atômica usada pelo backend para impedir repetidos.
+
 ## Retenção atual
 
 - ocorrências: 24 horas;
