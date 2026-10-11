@@ -10,12 +10,24 @@
     return;
   }
 
+  const initialUrl=new URL(window.location.href);
+  const initialHash=new URLSearchParams(window.location.hash.replace(/^#/,""));
+  const initialAuthType=initialUrl.searchParams.get("type")||initialHash.get("type")||"";
+  const initialAuthError=
+    initialUrl.searchParams.get("error_description")||
+    initialHash.get("error_description")||
+    initialUrl.searchParams.get("error")||
+    initialHash.get("error")||
+    "";
+
   const db = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
   });
   const $ = id => document.getElementById(id);
-  const recoveryRedirectUrl = `${window.location.origin}${window.location.pathname}`;
+  const authRedirectUrl = `${window.location.origin}${window.location.pathname}`;
   let passwordRecoveryMode = false;
+  let confirmationReturnHandled = false;
+  let pendingConfirmationEmail = "";
 
   const state = {
     session:null,user:null,keywords:[],groups:[],requests:[],occurrences:[],
@@ -26,7 +38,55 @@
     const el=$("toast"); el.textContent=msg; el.className=`toast ${type}`.trim(); el.hidden=false;
     clearTimeout(notify.timer); notify.timer=setTimeout(()=>el.hidden=true,3500);
   }
+  function isFetchError(err){
+    return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i
+      .test(String(err?.message||err||""));
+  }
+
+  function authErrorMessage(err,action="autenticação"){
+    const raw=String(err?.message||err?.detail||err||"").trim();
+    if(isFetchError(err)){
+      return `Não foi possível falar com o servidor de autenticação. Verifique sua internet e tente novamente. Se você estava criando a conta, confira também se o e-mail de confirmação chegou antes de repetir o cadastro.`;
+    }
+    if(/email not confirmed|email_not_confirmed/i.test(raw)){
+      return "Seu e-mail ainda não foi confirmado. Abra o e-mail enviado pelo Promo Monitor ou use Reenviar e-mail de confirmação.";
+    }
+    if(/invalid login credentials/i.test(raw)){
+      return "E-mail ou senha incorretos.";
+    }
+    if(/user already registered|already been registered/i.test(raw)){
+      return "Este e-mail já possui cadastro. Tente entrar ou recuperar a senha.";
+    }
+    if(/rate limit|too many requests/i.test(raw)){
+      return "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.";
+    }
+    return raw || `Falha na ${action}.`;
+  }
+
   function fail(err){ console.error(err); notify(err?.message || err?.detail || String(err),"error"); }
+
+  function cleanAuthCallbackUrl(){
+    if(window.location.search||window.location.hash){
+      history.replaceState({},document.title,window.location.pathname);
+    }
+  }
+
+  function showAuthMessage(message,kind=""){
+    const m=$("authMessage");
+    m.hidden=false;
+    m.textContent=message;
+    m.className=`muted auth-feedback ${kind}`.trim();
+  }
+
+  function showConfirmationActions(email){
+    pendingConfirmationEmail=String(email||"").trim();
+    $("confirmationActions").hidden=!pendingConfirmationEmail;
+  }
+
+  function hideConfirmationActions(){
+    pendingConfirmationEmail="";
+    $("confirmationActions").hidden=true;
+  }
   function clear(el){ while(el.firstChild) el.removeChild(el.firstChild); el.classList.remove("empty"); }
   function empty(el,msg){ clear(el); el.classList.add("empty"); el.textContent=msg; }
   function fmt(v){
@@ -71,6 +131,7 @@
     $("tabLogin").classList.toggle("active",login);
     $("tabSignup").classList.toggle("active",signup);
     $("authMessage").hidden=true;
+    if(mode!=="signup") hideConfirmationActions();
   }
   $("tabLogin").onclick=()=>setAuthMode("login");
   $("tabSignup").onclick=()=>setAuthMode("signup");
@@ -79,20 +140,64 @@
     setAuthMode("recovery");
   };
   $("backToLoginBtn").onclick=()=>setAuthMode("login");
+  $("confirmationBackToLoginBtn").onclick=()=>{
+    hideConfirmationActions();
+    setAuthMode("login");
+  };
+
+  $("resendConfirmationBtn").onclick=async()=>{
+    const email=pendingConfirmationEmail||$("signupEmail").value.trim()||$("loginEmail").value.trim();
+    if(!email) return notify("Informe o e-mail da conta para reenviar a confirmação.","error");
+    const button=$("resendConfirmationBtn");
+    button.disabled=true;
+    try{
+      const {error}=await db.auth.resend({
+        type:"signup",
+        email,
+        options:{emailRedirectTo:authRedirectUrl}
+      });
+      if(error) throw error;
+      showAuthMessage(
+        `Enviamos um novo e-mail de confirmação para ${email}. Confira também Spam/Lixo eletrônico.`,
+        "success"
+      );
+    }catch(err){
+      console.error(err);
+      showAuthMessage(authErrorMessage(err,"reenvio da confirmação"),"error");
+    }finally{
+      button.disabled=false;
+    }
+  };
 
   $("loginForm").addEventListener("submit",async e=>{
     e.preventDefault();
-    const {data,error}=await db.auth.signInWithPassword({
-      email:$("loginEmail").value.trim(), password:$("loginPassword").value
-    });
-    if(error) return fail(error);
-    await setSession(data.session);
+    const email=$("loginEmail").value.trim();
+    const button=e.currentTarget.querySelector('button[type="submit"],button:not([type])');
+    if(button)button.disabled=true;
+    hideConfirmationActions();
+    try{
+      const {data,error}=await db.auth.signInWithPassword({
+        email,
+        password:$("loginPassword").value
+      });
+      if(error) throw error;
+      await setSession(data.session);
+    }catch(err){
+      console.error(err);
+      const message=authErrorMessage(err,"entrada");
+      showAuthMessage(message,"error");
+      if(/email not confirmed|email_not_confirmed/i.test(String(err?.message||err||""))){
+        showConfirmationActions(email);
+      }
+    }finally{
+      if(button)button.disabled=false;
+    }
   });
 
   $("recoveryForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const email=$("recoveryEmail").value.trim();
-    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirectUrl});
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:authRedirectUrl});
     if(error) return fail(error);
     const m=$("authMessage");
     m.hidden=false;
@@ -118,17 +223,51 @@
 
   $("signupForm").addEventListener("submit",async e=>{
     e.preventDefault();
-    const {data,error}=await db.auth.signUp({
-      email:$("signupEmail").value.trim(),
-      password:$("signupPassword").value,
-      options:{data:{display_name:$("signupName").value.trim()}}
-    });
-    if(error) return fail(error);
-    const m=$("authMessage"); m.hidden=false;
-    m.textContent=data.session
-      ? "Conta criada. Entrando..."
-      : "Conta criada. Confirme seu e-mail e depois faça login.";
-    if(data.session) await setSession(data.session);
+    const email=$("signupEmail").value.trim();
+    const button=e.currentTarget.querySelector('button[type="submit"],button:not([type])');
+    if(button)button.disabled=true;
+    hideConfirmationActions();
+
+    try{
+      const {data,error}=await db.auth.signUp({
+        email,
+        password:$("signupPassword").value,
+        options:{
+          data:{display_name:$("signupName").value.trim()},
+          emailRedirectTo:authRedirectUrl
+        }
+      });
+      if(error) throw error;
+
+      const identities=data.user?.identities;
+      if(Array.isArray(identities) && identities.length===0){
+        showAuthMessage(
+          "Se este e-mail já tiver uma conta, use Entrar ou Esqueci minha senha. Se o cadastro ainda não foi confirmado, você pode reenviar a confirmação.",
+          "info"
+        );
+        showConfirmationActions(email);
+        return;
+      }
+
+      if(data.session){
+        showAuthMessage("Conta criada com sucesso. Entrando...","success");
+        await setSession(data.session);
+      }else{
+        showAuthMessage(
+          `Conta criada. Enviamos um e-mail de confirmação para ${email}. Abra o link do e-mail para confirmar sua conta; depois você voltará ao Promo Monitor.`,
+          "success"
+        );
+        showConfirmationActions(email);
+      }
+    }catch(err){
+      console.error(err);
+      showAuthMessage(authErrorMessage(err,"criação da conta"),"error");
+      if(isFetchError(err)){
+        showConfirmationActions(email);
+      }
+    }finally{
+      if(button)button.disabled=false;
+    }
   });
 
   $("logoutBtn").onclick=async()=>{ await db.auth.signOut(); await setSession(null); };
@@ -821,9 +960,39 @@
       passwordRecoveryMode=true;
       return setSession(session).catch(fail);
     }
+
+    if(
+      event==="SIGNED_IN" &&
+      !confirmationReturnHandled &&
+      (initialAuthType==="signup" || initialAuthType==="email")
+    ){
+      confirmationReturnHandled=true;
+      cleanAuthCallbackUrl();
+      setTimeout(
+        ()=>notify("E-mail confirmado com sucesso. Sua conta já está liberada.","success"),
+        150
+      );
+    }
+
     setSession(session).catch(fail);
   });
-  db.auth.getSession().then(({data})=>setSession(data.session).catch(fail));
+
+  db.auth.getSession().then(({data})=>{
+    setSession(data.session).catch(fail);
+
+    if(initialAuthError && !data.session){
+      setAuthMode("login");
+      showAuthMessage(
+        `Não foi possível concluir a confirmação pelo link: ${decodeURIComponent(initialAuthError.replace(/\+/g," "))}. Tente entrar; se o e-mail ainda não estiver confirmado, reenvie a confirmação.`,
+        "error"
+      );
+      cleanAuthCallbackUrl();
+    }
+  }).catch(err=>{
+    console.error(err);
+    setAuthMode("login");
+    showAuthMessage(authErrorMessage(err,"carregamento da sessão"),"error");
+  });
 
   setInterval(()=>{
     if(!state.user)return;
