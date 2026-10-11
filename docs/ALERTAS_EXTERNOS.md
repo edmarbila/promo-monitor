@@ -80,3 +80,41 @@ Se a notificação chegar, a configuração está pronta.
 A integração atual usa apenas o serviço público `https://ntfy.sh` para evitar que uma URL personalizada controlada por usuário transforme o backend em um proxy para endereços internos.
 
 Para maior privacidade, uma versão futura pode suportar uma instância ntfy auto-hospedada com allowlist administrativa.
+
+
+## Canais separados por finalidade
+
+A partir da versão 2.3:
+
+- o tópico configurado em **Configurar Conexão** é o canal **Produtos**;
+- cada loja cadastrada em **Lojas** possui seu próprio tópico de cupons;
+- o painel oferece **Copiar canal** e **Testar canal** em cada loja.
+
+Exemplo:
+
+```text
+Produtos:
+promocao-001-k7m4q2x9ab
+
+Mercado Livre:
+mercado-livre-f8p2m7q4x1
+
+Shopee:
+shopee-v9c4z8n2k5
+```
+
+No aplicativo ntfy, assine os três tópicos usando o mesmo servidor padrão `ntfy.sh`.
+
+## Evitar notificações repetidas
+
+O backend usa `tg_notification_log` e a função `tg_claim_notification`.
+
+- **Produtos**: a mesma mensagem, após normalização de texto e remoção de links, combinada com a mesma palavra-chave, não é enviada novamente durante 24 horas.
+- **Cupons**: o mesmo código da mesma loja não é enviado novamente durante 48 horas, mesmo que venha de outra fonte.
+
+As janelas podem ser alteradas no `server/.env`:
+
+```env
+PRODUCT_DEDUPE_HOURS=24
+COUPON_DEDUPE_HOURS=48
+```
