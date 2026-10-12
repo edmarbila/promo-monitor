@@ -583,3 +583,47 @@ COUPON_DEDUPE_HOURS=48
 ```
 
 Reinicie API e worker e confirme `/health` na versão 2.3.0.
+
+
+## Arquitetura multiusuário da VM
+
+Uma única VM atende todos os usuários do Promo Monitor.
+
+O processo `multi_user_worker.py` consulta todas as contas que possuem uma sessão Telegram válida e inicia uma tarefa separada para cada usuário. Portanto:
+
+- o usuário final **não cria VM**;
+- o usuário final não recebe nem conhece credenciais da Oracle;
+- cada usuário informa somente seu próprio API ID/API Hash/telefone;
+- grupos, palavras, lojas, cupons e tópicos ntfy continuam isolados por `user_id`;
+- a mesma instância 24/7 mantém todos os monitores ativos.
+
+No painel, **Servidor online • conecte Telegram** significa que a infraestrutura central está disponível, mas aquele usuário ainda não conectou a própria conta.
+
+Depois da conexão do Telegram, o supervisor central detecta a sessão e ativa o monitor daquele usuário automaticamente.
+
+## Tutorial visual de conexão
+
+A tela **Configurar Conexão** contém **Ver tutorial**, com exemplos visuais do fluxo:
+
+1. acesse `my.telegram.org` e entre com seu número;
+2. abra **API development tools**;
+3. crie uma aplicação, escolhendo nome e descrição;
+4. copie `api_id` e `api_hash`;
+5. informe os dados no painel e confirme o código do Telegram.
+
+## Correção do schema cache das lojas
+
+A migração `sql/upgrade_ntfy_channels_v5.sql` atual foi ajustada para:
+
+- adicionar `ntfy_topic`;
+- gerar automaticamente o tópico por loja em trigger;
+- não depender de o navegador enviar essa coluna no INSERT;
+- executar `NOTIFY pgrst, 'reload schema'` ao concluir.
+
+Se apareceu anteriormente:
+
+```text
+Could not find the 'ntfy_topic' column of 'tg_coupon_sites' in the schema cache
+```
+
+execute novamente a versão atual de `upgrade_ntfy_channels_v5.sql`.
