@@ -59,3 +59,26 @@ select public.tg_cleanup_old_data();
 ```
 
 Não coloque UUIDs reais, e-mails, telefones ou chaves nos SQLs versionados.
+
+
+## Erro de schema cache em Lojas
+
+Se o painel mostrar:
+
+```text
+Could not find the 'ntfy_topic' column of 'tg_coupon_sites' in the schema cache
+```
+
+execute a versão atual de:
+
+```text
+upgrade_ntfy_channels_v5.sql
+```
+
+Ela adiciona/valida a coluna, cria o trigger que gera o canal ntfy de cada loja e, ao final, executa:
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+O frontend atual não envia mais `ntfy_topic` durante o cadastro; o banco gera o canal automaticamente.
