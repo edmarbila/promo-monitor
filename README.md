@@ -23,7 +23,9 @@ O projeto usa **Supabase Auth + PostgreSQL/RLS**, **Telethon**, **FastAPI**, um 
 - Cadastro de lojas como Shopee, Amazon e KaBuM pelo nome.
 - Busca imediata ao cadastrar uma loja e botão **Buscar agora**.
 - Cupons removidos fisicamente após 48 horas sem atualização.
-- Painel responsivo para computador e celular.
+- Painel responsivo para computador e celular, incluindo acesso a **Lojas** no menu móvel.
+- Uma única VM/worker central atende todos os usuários; cada usuário configura apenas seu próprio Telegram, grupos, palavras, lojas e canais ntfy.
+- O indicador diferencia **Servidor online**, **aguardando conexão do Telegram** e **Monitor online**.
 - Serviços systemd para API e worker.
 - Exemplo de reverse proxy HTTPS com Caddy.
 - Cliente Windows legado/opcional.
@@ -143,6 +145,18 @@ Teste:
 ```text
 http://localhost:8787/health
 ```
+
+## Configurar conexão do Telegram
+
+A tela **Configurar Conexão** possui um botão **Ver tutorial** com exemplos visuais das etapas do `my.telegram.org`:
+
+1. entrar com o número;
+2. abrir **API development tools**;
+3. criar uma aplicação escolhendo nome e descrição;
+4. copiar **api_id** e **api_hash**;
+5. informar os dados no Promo Monitor e confirmar o código recebido no Telegram.
+
+O usuário não precisa criar VM ou servidor próprio. O backend central já fica 24/7 na VM configurada pelo administrador.
 
 ## Primeiro acesso
 
