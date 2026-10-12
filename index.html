@@ -159,13 +159,19 @@
     <section id="view-telegram" class="view">
       <section class="panel">
         <div class="panel-head"><div><h3>Configurar Conexão</h3><p id="telegramStatusText">Verificando conexão com o Telegram...</p></div><span id="telegramPill" class="pill">—</span></div>
-        <div class="guide">
-          <h4>Como conseguir API ID e API Hash</h4>
+        <div class="guide connection-guide">
+          <div class="guide-title-row">
+            <div>
+              <h4>Como conseguir API ID e API Hash</h4>
+              <p>Você não precisa criar servidor ou VM. O Promo Monitor usa o servidor central 24 horas; cada usuário configura somente sua própria conta do Telegram, grupos, palavras e lojas.</p>
+            </div>
+            <button id="openTelegramTutorialBtn" type="button" class="btn secondary">Ver tutorial</button>
+          </div>
           <ol>
-            <li>Acesse <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a>.</li>
-            <li>Entre com seu número.</li>
+            <li>Acesse <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a> e entre com seu número.</li>
             <li>Abra <strong>API development tools</strong>.</li>
-            <li>Crie uma aplicação e copie <strong>api_id</strong> e <strong>api_hash</strong>.</li>
+            <li>Crie uma aplicação, escolha o nome e uma descrição.</li>
+            <li>Copie <strong>api_id</strong> e <strong>api_hash</strong>.</li>
             <li>Informe os dados abaixo e confirme o código recebido no Telegram.</li>
           </ol>
           <p>Os dados são enviados ao backend e armazenados criptografados. Eles não são gravados em um `.env` do navegador.</p>
@@ -281,7 +287,8 @@
     <button class="nav" data-view="keywords">Palavras</button>
     <button class="nav" data-view="groups">Grupos</button>
     <button class="nav" data-view="coupons">Cupons</button>
-    <button class="nav" data-view="telegram">Configurar Conexão</button>
+    <button class="nav" data-view="stores">Lojas</button>
+    <button class="nav" data-view="telegram">Conexão</button>
     <button class="nav" data-view="account">Conta</button>
   </nav>
 </div>
@@ -295,6 +302,100 @@
     <div class="setup-modal-actions">
       <button id="telegramSetupGoBtn" type="button" class="btn primary">Configurar conexão</button>
       <button id="telegramSetupLaterBtn" type="button" class="btn ghost">Agora não</button>
+    </div>
+  </section>
+</div>
+
+<div id="telegramTutorialModal" class="modal-backdrop" hidden>
+  <section class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="telegramTutorialTitle">
+    <div class="tutorial-head">
+      <div>
+        <small>TUTORIAL TELEGRAM</small>
+        <h3 id="telegramTutorialTitle">Criar API ID e API Hash</h3>
+      </div>
+      <button id="closeTelegramTutorialBtn" type="button" class="btn ghost">Fechar</button>
+    </div>
+
+    <p class="muted">Os exemplos abaixo reproduzem visualmente as etapas que você encontrará no <strong>my.telegram.org</strong>. A aparência exata do site pode variar.</p>
+
+    <div class="tutorial-steps">
+      <article class="tutorial-step">
+        <span class="step-number">1</span>
+        <div>
+          <h4>Entre no my.telegram.org</h4>
+          <p>Acesse <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a>, informe seu número com DDI e confirme o código enviado pelo Telegram.</p>
+          <div class="tutorial-shot">
+            <div class="shot-bar"><span></span><span></span><span></span><strong>my.telegram.org</strong></div>
+            <div class="shot-body">
+              <div class="shot-title">Sign in</div>
+              <div class="shot-label">Phone number</div>
+              <div class="shot-input">+55 11 99999-9999</div>
+              <div class="shot-button">Next</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="tutorial-step">
+        <span class="step-number">2</span>
+        <div>
+          <h4>Abra API development tools</h4>
+          <p>Depois de entrar, clique em <strong>API development tools</strong>.</p>
+          <div class="tutorial-shot">
+            <div class="shot-bar"><span></span><span></span><span></span><strong>my.telegram.org</strong></div>
+            <div class="shot-body shot-menu">
+              <div>API development tools</div>
+              <div>Delete account</div>
+              <div>Log out</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="tutorial-step">
+        <span class="step-number">3</span>
+        <div>
+          <h4>Crie sua aplicação</h4>
+          <p>Escolha um nome e uma descrição para a aplicação. Depois salve.</p>
+          <div class="tutorial-shot">
+            <div class="shot-bar"><span></span><span></span><span></span><strong>App configuration</strong></div>
+            <div class="shot-body">
+              <div class="shot-label">App title</div>
+              <div class="shot-input">Promo Monitor</div>
+              <div class="shot-label">Short name</div>
+              <div class="shot-input">promomonitor</div>
+              <div class="shot-label">Description</div>
+              <div class="shot-input">Monitor de promoções</div>
+              <div class="shot-button">Create application</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="tutorial-step">
+        <span class="step-number">4</span>
+        <div>
+          <h4>Copie API ID e API Hash</h4>
+          <p>Copie os dois valores exibidos e volte para o Promo Monitor. Informe-os nos campos <strong>API ID</strong> e <strong>API Hash</strong>, junto com seu telefone.</p>
+          <div class="tutorial-shot">
+            <div class="shot-bar"><span></span><span></span><span></span><strong>App configuration</strong></div>
+            <div class="shot-body">
+              <div class="shot-label">App api_id</div>
+              <div class="shot-secret">12345678</div>
+              <div class="shot-label">App api_hash</div>
+              <div class="shot-secret">••••••••••••••••••••••••••••••••</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="tutorial-step">
+        <span class="step-number">5</span>
+        <div>
+          <h4>Confirme a conexão</h4>
+          <p>No Promo Monitor, clique em <strong>Enviar código</strong>. Digite o código recebido pelo Telegram e, se a conta tiver verificação em duas etapas, informe também a senha 2FA.</p>
+        </div>
+      </article>
     </div>
   </section>
 </div>
