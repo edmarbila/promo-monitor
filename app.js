@@ -31,7 +31,7 @@
 
   const state = {
     session:null,user:null,keywords:[],groups:[],requests:[],occurrences:[],
-    coupons:[],stores:[],worker:null,telegram:null,alerts:null,view:"dashboard"
+    coupons:[],stores:[],worker:null,serverHealth:null,telegram:null,alerts:null,view:"dashboard"
   };
 
   function notify(msg,type=""){
@@ -332,10 +332,21 @@
       .eq("user_id",state.user.id).maybeSingle();
     if(error) throw error; state.worker=data||null; renderWorker();
   }
+  async function loadServerHealth(){
+    try{
+      const r=await fetch(`${cfg.CONTROL_API_URL}/health`,{cache:"no-store"});
+      const data=await r.json().catch(()=>({}));
+      state.serverHealth=r.ok?data:null;
+    }catch(e){
+      state.serverHealth=null;
+    }
+    renderWorker();
+  }
   async function loadTelegram(){
     try{ state.telegram=await api("/telegram/status"); }
     catch(e){ state.telegram={status:"error",last_error:e.message}; }
     renderTelegram();
+    renderWorker();
   }
   async function loadAlerts(){
     const {data,error}=await db.from("tg_alert_settings").select("*")
@@ -347,7 +358,7 @@
   async function loadAll(){
     await Promise.all([
       loadKeywords(),loadGroups(),loadOccurrences(),loadCoupons(),
-      loadStores(),loadWorker(),loadTelegram(),loadAlerts()
+      loadStores(),loadWorker(),loadServerHealth(),loadTelegram(),loadAlerts()
     ]);
     renderCounts();
   }
@@ -359,9 +370,32 @@
   }
   function renderWorker(){
     const w=state.worker;
-    const online=!!(w?.last_heartbeat && Date.now()-new Date(w.last_heartbeat).getTime()<90000 && w.state==="online");
-    const el=$("workerBadge"); el.className=`badge ${online?"online":"offline"}`;
-    el.querySelector("span").textContent=online?"Worker online":"Worker offline";
+    const serverOnline=!!state.serverHealth?.ok;
+    const telegramConnected=state.telegram?.status==="connected";
+    const monitorOnline=!!(
+      w?.last_heartbeat &&
+      Date.now()-new Date(w.last_heartbeat).getTime()<90000 &&
+      w.state==="online"
+    );
+
+    const el=$("workerBadge");
+    if(!serverOnline){
+      el.className="badge offline";
+      el.querySelector("span").textContent="Servidor indisponível";
+      return;
+    }
+    if(!telegramConnected){
+      el.className="badge waiting";
+      el.querySelector("span").textContent="Servidor online • conecte Telegram";
+      return;
+    }
+    if(monitorOnline){
+      el.className="badge online";
+      el.querySelector("span").textContent="Monitor online";
+      return;
+    }
+    el.className="badge waiting";
+    el.querySelector("span").textContent="Servidor online • iniciando monitor";
   }
 
   function renderKeywords(){
@@ -538,17 +572,15 @@
       if($("sourcePromobit").checked)sources.push("promobit");
       if(!sources.length)throw new Error("Selecione pelo menos uma fonte.");
       const slug=slugify(name);
-      const storeTopic=`${slug.slice(0,48)||"cupons"}-${randomChars(10)}`;
       const {data,error}=await db.from("tg_coupon_sites")
         .insert({
           user_id:state.user.id,
           store_name:name,
           store_slug:slug,
           sources,
-          ntfy_topic:storeTopic,
           active:true
         })
-        .select("id,ntfy_topic").single();
+        .select("id").single();
       if(error)throw error;
       $("storeName").value="";
       await loadStores();
@@ -883,6 +915,14 @@
   };
   $("telegramSetupLaterBtn").onclick=closeTelegramSetupPrompt;
 
+  function updateTelegramBanner(){
+    const s=state.telegram?.status||"not_configured";
+    $("telegramBanner").hidden=(
+      s==="connected" ||
+      state.view==="telegram"
+    );
+  }
+
   function renderTelegram(){
     const s=state.telegram?.status||"not_configured";
     const names={not_configured:"Não configurado",code_sent:"Código enviado","2fa_required":"2FA necessário",connected:"Conectado",error:"Erro",disconnected:"Desconectado"};
@@ -894,7 +934,7 @@
     $("telegramCodeForm").hidden=s!=="code_sent";
     $("telegram2faForm").hidden=s!=="2fa_required";
     $("disconnectTelegramBtn").hidden=s!=="connected";
-    $("telegramBanner").hidden=s==="connected";
+    updateTelegramBanner();
     if(s==="connected"){
       $("telegramSetupModal").hidden=true;
     }else{
@@ -933,8 +973,21 @@
     try{await api("/telegram/disconnect",{method:"POST"});await loadTelegram();await loadWorker();}catch(e){fail(e);}
   };
 
+  $("openTelegramTutorialBtn").onclick=()=>{
+    $("telegramTutorialModal").hidden=false;
+  };
+  $("closeTelegramTutorialBtn").onclick=()=>{
+    $("telegramTutorialModal").hidden=true;
+  };
+  $("telegramTutorialModal").addEventListener("click",e=>{
+    if(e.target===$("telegramTutorialModal")){
+      $("telegramTutorialModal").hidden=true;
+    }
+  });
+
   function switchView(name){
     state.view=name;
+    updateTelegramBanner();
     document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
     $(`view-${name}`)?.classList.add("active");
     document.querySelectorAll(".nav[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));
@@ -949,7 +1002,7 @@
     if(name==="coupons")await loadCoupons();
     if(name==="stores")await loadStores();
     if(name==="history")await loadOccurrences();
-    if(name==="telegram")await Promise.all([loadTelegram(),loadWorker(),loadAlerts()]);
+    if(name==="telegram")await Promise.all([loadTelegram(),loadWorker(),loadServerHealth(),loadAlerts()]);
     renderCounts();
   }
   document.querySelectorAll(".nav[data-view]").forEach(x=>x.onclick=()=>switchView(x.dataset.view));
@@ -996,7 +1049,7 @@
 
   setInterval(()=>{
     if(!state.user)return;
-    loadWorker().catch(()=>{}); loadTelegram().catch(()=>{});
+    loadWorker().catch(()=>{}); loadServerHealth().catch(()=>{}); loadTelegram().catch(()=>{});
     if(state.view==="coupons")loadCoupons().catch(()=>{});
   },15000);
 })();
