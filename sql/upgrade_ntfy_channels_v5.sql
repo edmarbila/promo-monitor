@@ -21,8 +21,32 @@ set ntfy_topic =
 where ntfy_topic is null or btrim(ntfy_topic) = '';
 
 alter table public.tg_coupon_sites
-  alter column ntfy_topic
-  set default ('cupons-' || encode(gen_random_bytes(6),'hex'));
+  alter column ntfy_topic drop default;
+
+create or replace function public.tg_assign_coupon_site_topic()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_base text;
+begin
+  if new.ntfy_topic is null or btrim(new.ntfy_topic) = '' then
+    v_base := trim(
+      both '-' from regexp_replace(lower(coalesce(new.store_slug,'cupons')), '[^a-z0-9]+', '-', 'g')
+    );
+    if v_base = '' then
+      v_base := 'cupons';
+    end if;
+    new.ntfy_topic := left(v_base,48) || '-' || encode(gen_random_bytes(5),'hex');
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tg_coupon_sites_assign_topic on public.tg_coupon_sites;
+create trigger tg_coupon_sites_assign_topic
+before insert on public.tg_coupon_sites
+for each row execute function public.tg_assign_coupon_site_topic();
 
 alter table public.tg_coupon_sites
   alter column ntfy_topic set not null;
@@ -137,5 +161,7 @@ begin
   where expires_at <= now();
 end;
 $$;
+
+notify pgrst, 'reload schema';
 
 commit;
